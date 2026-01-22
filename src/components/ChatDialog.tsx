@@ -22,6 +22,8 @@ interface ChatDialogProps {
   isOpen: boolean;
   onClose: () => void;
   chatPartner: string; // This will be the display name, not the ID
+  // In a real application, you would pass the actual chatPartnerId here:
+  // chatPartnerId: string;
 }
 
 const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner }) => {
@@ -31,9 +33,10 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  // For simplicity, we'll assume a fixed chat partner ID for "Supporto ConnectHub"
-  // In a real app, this would be dynamic based on who the user is chatting with.
-  const chatPartnerId = "simulated_support_id_789"; 
+  // For simplicity and demonstration, we'll assume a fixed chat partner ID for "Supporto ConnectHub".
+  // In a real app, this `chatPartnerId` would be passed as a prop or fetched dynamically
+  // based on the selected chat. For example, if chatting with another user, this would be their user_id.
+  const simulatedChatPartnerId = "simulated_support_id_789"; 
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -55,12 +58,12 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`) // Fetch messages where current user is sender or receiver
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${simulatedChatPartnerId}),and(sender_id.eq.${simulatedChatPartnerId},receiver_id.eq.${currentUserId})`) // Fetch messages relevant to this specific chat
         .order('timestamp', { ascending: true });
 
       if (error) {
-        console.error("Error fetching messages:", error);
-        showError("Errore nel caricamento dei messaggi.");
+        console.error("Error fetching messages:", error); // Log detailed error for debugging
+        showError("Errore nel caricamento dei messaggi."); // Generic error message
       } else {
         setMessages(data as Message[]);
       }
@@ -78,8 +81,8 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
         (payload) => {
           const newMsg = payload.new as Message;
           // Only add if it's relevant to this chat (either sent by current user or to current user from this partner)
-          if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === chatPartnerId) ||
-              (newMsg.sender_id === chatPartnerId && newMsg.receiver_id === currentUserId)) {
+          if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === simulatedChatPartnerId) ||
+              (newMsg.sender_id === simulatedChatPartnerId && newMsg.receiver_id === currentUserId)) {
             setMessages((prev) => [...prev, newMsg]);
           }
         }
@@ -89,7 +92,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isOpen, currentUserId, chatPartnerId]);
+  }, [isOpen, currentUserId, simulatedChatPartnerId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -100,7 +103,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
 
     const newMsg: Omit<Message, 'id'> = {
       sender_id: currentUserId,
-      receiver_id: chatPartnerId,
+      receiver_id: simulatedChatPartnerId,
       text: newMessage,
       timestamp: new Date().toISOString(), // Use ISO string for better sorting/storage
       read: false,
@@ -108,8 +111,8 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
 
     const { data, error } = await supabase.from('messages').insert([newMsg]).select();
     if (error) {
-      console.error("Error sending message:", error);
-      showError("Errore durante l'invio del messaggio.");
+      console.error("Error sending message:", error); // Log detailed error for debugging
+      showError("Errore durante l'invio del messaggio."); // Generic error message
     } else if (data && data.length > 0) {
       setNewMessage("");
       // The real-time subscription will add the message to the state, no need to manually add here.
@@ -118,7 +121,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
     // Simulate a response from the chat partner (this would be handled by a backend/AI in a real app)
     setTimeout(async () => {
       const botResponse: Omit<Message, 'id'> = {
-        sender_id: chatPartnerId, // Bot is the sender
+        sender_id: simulatedChatPartnerId, // Bot is the sender
         receiver_id: currentUserId, // Current user is the receiver
         text: "Ho ricevuto il tuo messaggio!",
         timestamp: new Date().toISOString(),
@@ -126,7 +129,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
       };
       const { error: botError } = await supabase.from('messages').insert([botResponse]);
       if (botError) {
-        console.error("Error sending bot response:", botError);
+        console.error("Error sending bot response:", botError); // Log detailed error for debugging
       }
     }, 1000);
   };

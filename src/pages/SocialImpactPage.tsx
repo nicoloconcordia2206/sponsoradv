@@ -58,8 +58,8 @@ const SocialImpactPage = () => {
       setLoading(true);
       const { data, error } = await supabase.from('sponsorship_requests').select('*');
       if (error) {
-        console.error("Error fetching sponsorship requests:", error);
-        showError("Errore nel caricamento dei progetti di sostegno.");
+        console.error("Error fetching sponsorship requests:", error); // Log detailed error for debugging
+        showError("Errore nel caricamento dei progetti di sostegno."); // Generic error message
       } else {
         setSponsorshipRequests(data as SponsorshipRequest[]);
       }
@@ -88,8 +88,8 @@ const SocialImpactPage = () => {
 
     const { data, error } = await supabase.from('sponsorship_requests').insert([newProject]).select();
     if (error) {
-      console.error("Error publishing project:", error);
-      showError("Errore durante il caricamento del progetto.");
+      console.error("Error publishing project:", error); // Log detailed error for debugging
+      showError("Errore durante il caricamento del progetto."); // Generic error message
     } else if (data && data.length > 0) {
       setSponsorshipRequests((prev) => [...prev, data[0] as SponsorshipRequest]);
       showSuccess("Progetto di Sostegno caricato con successo!");
@@ -110,8 +110,8 @@ const SocialImpactPage = () => {
       .eq('id', projectId);
 
     if (error) {
-      console.error("Error funding project:", error);
-      showError("Errore durante il finanziamento del progetto.");
+      console.error("Error funding project:", error); // Log detailed error for debugging
+      showError("Errore durante il finanziamento del progetto."); // Generic error message
     } else {
       setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata' } : p));
       showSuccess(`Progetto finanziato con ${fundingType}! Ricevuta per detrazione fiscale generata.`);

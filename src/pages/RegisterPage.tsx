@@ -32,7 +32,8 @@ const RegisterPage = () => {
     });
 
     if (error) {
-      showError(error.message);
+      console.error("Registration error:", error.message); // Log detailed error for debugging
+      showError("Errore durante la registrazione. L'email potrebbe essere già in uso o la password non è abbastanza forte."); // Generic error message
       setLoading(false);
       return;
     }
@@ -44,10 +45,10 @@ const RegisterPage = () => {
         .insert([{ id: data.user.id, role: role }]);
 
       if (profileError) {
-        console.error("Error inserting profile:", profileError);
-        showError("Errore durante la registrazione del profilo. Per favore, riprova.");
+        console.error("Error inserting profile:", profileError); // Log detailed error for debugging
+        showError("Errore durante la registrazione del profilo. Per favore, riprova."); // Generic error message
         // Optionally, you might want to delete the user from auth.users if profile creation fails
-        await supabase.auth.admin.deleteUser(data.user.id);
+        // await supabase.auth.admin.deleteUser(data.user.id); // This requires service role key, not suitable for client-side
         setLoading(false);
         return;
       }

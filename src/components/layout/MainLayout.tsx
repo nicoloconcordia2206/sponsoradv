@@ -33,8 +33,8 @@ const MainLayout: React.FC = () => {
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error("Error logging out:", error);
-      showError("Errore durante il logout.");
+      console.error("Error logging out:", error); // Log detailed error for debugging
+      showError("Errore durante il logout. Riprova."); // Generic error message
     } else {
       showSuccess("Logout effettuato con successo!");
       navigate("/login"); // Reindirizza alla pagina di login dopo il logout

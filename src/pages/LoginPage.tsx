@@ -24,7 +24,8 @@ const LoginPage = () => {
     });
 
     if (error) {
-      showError(error.message);
+      console.error("Login error:", error.message); // Log detailed error for debugging
+      showError("Credenziali non valide o errore di accesso. Riprova."); // Generic error message
     } else {
       showSuccess("Login effettuato con successo!");
       navigate("/creator-hub"); // Reindirizza alla dashboard dopo il login

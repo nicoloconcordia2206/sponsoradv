@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import { showError } from '@/utils/toast'; // Import showError
 
 export type UserRole = 'Azienda' | 'Influencer' | 'Squadra/Negozio' | 'Investitore' | null;
 
@@ -22,7 +23,8 @@ export const useRole = () => {
           .single();
 
         if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-          console.error("Error fetching user role:", error);
+          console.error("Error fetching user role:", error); // Log detailed error for debugging
+          showError("Errore nel caricamento del ruolo utente."); // Generic error message
           setRole(null);
         } else if (data) {
           setRole(data.role as UserRole);
@@ -63,8 +65,8 @@ export const useRole = () => {
         .upsert({ id: user.id, role: newRole });
 
       if (error) {
-        console.error("Error updating user role:", error);
-        showError("Errore nell'aggiornamento del ruolo.");
+        console.error("Error updating user role:", error); // Log detailed error for debugging
+        showError("Errore nell'aggiornamento del ruolo."); // Generic error message
       } else {
         setRole(newRole);
       }

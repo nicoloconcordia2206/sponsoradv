@@ -66,8 +66,8 @@ const CreatorHubPage = () => {
       setLoading(true);
       const { data, error } = await supabase.from('campaigns').select('*'); // Changed to 'campaigns'
       if (error) {
-        console.error("Error fetching job briefs:", error);
-        showError("Errore nel caricamento dei brief video.");
+        console.error("Error fetching job briefs:", error); // Log detailed error for debugging
+        showError("Errore nel caricamento dei brief video."); // Generic error message
       } else {
         setJobBriefs(data as JobBrief[]);
       }
@@ -77,8 +77,8 @@ const CreatorHubPage = () => {
     const fetchProposals = async () => {
       const { data, error } = await supabase.from('proposals').select('*');
       if (error) {
-        console.error("Error fetching proposals:", error);
-        showError("Errore nel caricamento delle proposte.");
+        console.error("Error fetching proposals:", error); // Log detailed error for debugging
+        showError("Errore nel caricamento delle proposte."); // Generic error message
       } else {
         setProposals(data as Proposal[]);
       }
@@ -104,8 +104,8 @@ const CreatorHubPage = () => {
 
     const { data, error } = await supabase.from('campaigns').insert([newBrief]).select(); // Changed to 'campaigns'
     if (error) {
-      console.error("Error publishing brief:", error);
-      showError("Errore durante la pubblicazione del brief.");
+      console.error("Error publishing brief:", error); // Log detailed error for debugging
+      showError("Errore durante la pubblicazione del brief."); // Generic error message
     } else if (data && data.length > 0) {
       setJobBriefs((prev) => [...prev, data[0] as JobBrief]);
       showSuccess("Job Post pubblicato con successo!");
@@ -132,8 +132,8 @@ const CreatorHubPage = () => {
 
     const { data, error } = await supabase.from('proposals').insert([newProposal]).select();
     if (error) {
-      console.error("Error sending proposal:", error);
-      showError("Errore durante l'invio della proposta.");
+      console.error("Error sending proposal:", error); // Log detailed error for debugging
+      showError("Errore durante l'invio della proposta."); // Generic error message
     } else if (data && data.length > 0) {
       setProposals((prev) => [...prev, data[0] as Proposal]);
       showSuccess(`Proposta inviata per il lavoro: "${currentJobForProposal.title}"`);
@@ -150,8 +150,8 @@ const CreatorHubPage = () => {
       .eq('id', proposalId);
 
     if (error) {
-      console.error("Error accepting proposal:", error);
-      showError("Errore durante l'accettazione della proposta.");
+      console.error("Error accepting proposal:", error); // Log detailed error for debugging
+      showError("Errore durante l'accettazione della proposta."); // Generic error message
     } else {
       setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'Accettata' } : p));
       showSuccess(`Proposta accettata! Contratto generato e sistema Escrow attivato.`);

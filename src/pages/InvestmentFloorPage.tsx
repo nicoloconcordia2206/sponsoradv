@@ -56,8 +56,8 @@ const InvestmentFloorPage = () => {
       setLoading(true);
       const { data, error } = await supabase.from('investments').select('*'); // Changed to 'investments'
       if (error) {
-        console.error("Error fetching startup pitches:", error);
-        showError("Errore nel caricamento dei pitch di startup.");
+        console.error("Error fetching startup pitches:", error); // Log detailed error for debugging
+        showError("Errore nel caricamento dei pitch di startup."); // Generic error message
       } else {
         setStartupPitches(data as StartupPitch[]);
       }
@@ -69,7 +69,7 @@ const InvestmentFloorPage = () => {
 
   const handleUploadPitch = async () => {
     if (!newPitchName || !newPitchSector || !newPitchDescription || !newPitchCapital || !newPitchEquity || !currentUserId) {
-      showError("Per favore, compila tutti i campi per il pitch e assicurati di essere loggato.");
+      showError("Per favor, compila tutti i campi per il pitch e assicurati di essere loggato.");
       return;
     }
     const newPitch: Omit<StartupPitch, 'id'> = {
@@ -85,8 +85,8 @@ const InvestmentFloorPage = () => {
 
     const { data, error } = await supabase.from('investments').insert([newPitch]).select(); // Changed to 'investments'
     if (error) {
-      console.error("Error uploading pitch:", error);
-      showError("Errore durante il caricamento del pitch.");
+      console.error("Error uploading pitch:", error); // Log detailed error for debugging
+      showError("Errore durante il caricamento del pitch."); // Generic error message
     } else if (data && data.length > 0) {
       setStartupPitches((prev) => [...prev, data[0] as StartupPitch]);
       showSuccess("Pitch di startup caricato con successo!");
@@ -106,8 +106,8 @@ const InvestmentFloorPage = () => {
       .eq('id', pitchId);
 
     if (error) {
-      console.error("Error sending LOI:", error);
-      showError("Errore durante l'invio della Lettera di Intenti.");
+      console.error("Error sending LOI:", error); // Log detailed error for debugging
+      showError("Errore durante l'invio della Lettera di Intenti."); // Generic error message
     } else {
       setStartupPitches(prev =>
         prev.map(pitch =>

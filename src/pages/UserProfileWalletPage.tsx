@@ -60,8 +60,8 @@ const UserProfileWalletPage = () => {
         .order('date', { ascending: false });
 
       if (transactionsError) {
-        console.error("Error fetching transactions:", transactionsError);
-        showError("Errore nel caricamento delle transazioni.");
+        console.error("Error fetching transactions:", transactionsError); // Log detailed error for debugging
+        showError("Errore nel caricamento delle transazioni."); // Generic error message
       } else {
         setTransactions(transactionsData as Transaction[]);
         // Calculate balance from transactions
@@ -79,8 +79,8 @@ const UserProfileWalletPage = () => {
         .order('timestamp', { ascending: false });
 
       if (notificationsError) {
-        console.error("Error fetching notifications:", notificationsError);
-        showError("Errore nel caricamento delle notifiche.");
+        console.error("Error fetching notifications:", notificationsError); // Log detailed error for debugging
+        showError("Errore nel caricamento delle notifiche."); // Generic error message
       } else {
         setNotifications(notificationsData as Notification[]);
       }
@@ -102,7 +102,8 @@ const UserProfileWalletPage = () => {
     };
     const { data, error } = await supabase.from('notifications').insert([newNotification]).select();
     if (error) {
-      console.error("Error adding notification:", error);
+      console.error("Error adding notification:", error); // Log detailed error for debugging
+      showError("Errore durante l'aggiunta della notifica."); // Generic error message
     } else if (data && data.length > 0) {
       setNotifications(prev => [data[0] as Notification, ...prev]);
     }
@@ -125,8 +126,8 @@ const UserProfileWalletPage = () => {
 
     const { data: transactionData, error: transactionError } = await supabase.from('transactions').insert([newTransaction]).select();
     if (transactionError) {
-      console.error("Error making payment:", transactionError);
-      showError("Errore durante l'elaborazione del pagamento.");
+      console.error("Error making payment:", transactionError); // Log detailed error for debugging
+      showError("Errore durante l'elaborazione del pagamento."); // Generic error message
     } else if (transactionData && transactionData.length > 0) {
       setTransactions(prev => [transactionData[0] as Transaction, ...prev]);
       setBalance(prev => prev - amount); // Update local balance
@@ -140,7 +141,8 @@ const UserProfileWalletPage = () => {
       };
       const { data: notificationData, error: notificationError } = await supabase.from('notifications').insert([newNotification]).select();
       if (notificationError) {
-        console.error("Error adding payment notification:", notificationError);
+        console.error("Error adding payment notification:", notificationError); // Log detailed error for debugging
+        showError("Errore durante l'aggiunta della notifica di pagamento."); // Generic error message
       } else if (notificationData && notificationData.length > 0) {
         setNotifications(prev => [notificationData[0] as Notification, ...prev]);
       }
@@ -154,8 +156,8 @@ const UserProfileWalletPage = () => {
       .eq('id', id);
 
     if (error) {
-      console.error("Error marking notification as read:", error);
-      showError("Errore nell'aggiornamento della notifica.");
+      console.error("Error marking notification as read:", error); // Log detailed error for debugging
+      showError("Errore nell'aggiornamento della notifica."); // Generic error message
     } else {
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }
