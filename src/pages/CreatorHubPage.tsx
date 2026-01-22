@@ -169,7 +169,7 @@ const CreatorHubPage = () => {
         Marketplace per video influencer e aziende.
       </p>
 
-      {role === "Azienda" && (
+      {(role === "Azienda" || role === "Squadra/Negozio") && (
         <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
