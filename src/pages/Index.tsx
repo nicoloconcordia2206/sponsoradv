@@ -38,14 +38,19 @@ const Index = () => {
   // However, as a fallback or during loading, we can show a message.
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 text-foreground p-4">
-      <div className="text-center p-8 max-w-4xl bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
-        <h1 className="text-5xl font-extrabold mb-6 text-primary drop-shadow-md">
-          Benvenuto in ConnectHub
-        </h1>
-        <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
-          Reindirizzamento in corso...
-        </p>
-      </div>
+      <Card className="text-center p-8 max-w-4xl bg-white/80 backdrop-blur-md border border-white/50 rounded-xl shadow-2xl">
+        <CardHeader>
+          <CardTitle className="text-5xl font-extrabold mb-4 text-primary drop-shadow-md">
+            Benvenuto in ConnectHub
+          </CardTitle>
+          <CardDescription className="text-xl text-muted-foreground leading-relaxed">
+            Reindirizzamento in corso...
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* You could add a spinner here if loading takes longer */}
+        </CardContent>
+      </Card>
     </div>
   );
 };
