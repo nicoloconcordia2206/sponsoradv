@@ -1,14 +1,17 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { showSuccess, showError } from "@/utils/toast";
+import ChatDialog from "@/components/ChatDialog"; // Import the new ChatDialog
 
 const UserProfileWalletPage = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
   const handleSignContract = (contractId: string) => {
     // Simulate digital signature
     showSuccess(`Contratto ${contractId} firmato digitalmente!`);
@@ -29,7 +32,7 @@ const UserProfileWalletPage = () => {
       </p>
 
       {/* Sezione Profilo Utente */}
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
         <CardHeader>
           <CardTitle>Il Mio Profilo</CardTitle>
           <CardDescription>Gestisci le tue informazioni personali e documenti.</CardDescription>
@@ -37,22 +40,22 @@ const UserProfileWalletPage = () => {
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="user-name">Nome</Label>
-            <Input id="user-name" value="Mario Rossi" readOnly />
+            <Input id="user-name" value="Mario Rossi" readOnly className="bg-white/50 backdrop-blur-sm border-white/30" />
           </div>
           <div>
             <Label htmlFor="user-email">Email</Label>
-            <Input id="user-email" value="mario.rossi@example.com" readOnly />
+            <Input id="user-email" value="mario.rossi@example.com" readOnly className="bg-white/50 backdrop-blur-sm border-white/30" />
           </div>
           <Separator />
           <h3 className="text-lg font-semibold">Documenti</h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span>Documento d'Identità.pdf</span>
-              <Button variant="outline">Visualizza</Button>
+              <Button variant="outline" className="bg-white/50 backdrop-blur-sm border-white/30 text-primary hover:bg-white/70">Visualizza</Button>
             </div>
             <div className="flex items-center justify-between">
               <span>Certificato KYC.pdf</span>
-              <Button variant="outline">Visualizza</Button>
+              <Button variant="outline" className="bg-white/50 backdrop-blur-sm border-white/30 text-primary hover:bg-white/70">Visualizza</Button>
             </div>
             <Button className="w-full">Carica Nuovo Documento</Button>
           </div>
@@ -60,7 +63,7 @@ const UserProfileWalletPage = () => {
       </Card>
 
       {/* Sezione Wallet e Pagamenti */}
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
         <CardHeader>
           <CardTitle>Il Mio Wallet</CardTitle>
           <CardDescription>Gestisci i tuoi fondi e transazioni.</CardDescription>
@@ -91,7 +94,7 @@ const UserProfileWalletPage = () => {
       </Card>
 
       {/* Sezione Contratti */}
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
         <CardHeader>
           <CardTitle>I Miei Contratti</CardTitle>
           <CardDescription>Visualizza e firma i tuoi contratti.</CardDescription>
@@ -101,14 +104,14 @@ const UserProfileWalletPage = () => {
             <div className="flex items-center justify-between">
               <span>Contratto Influencer #001</span>
               <div className="flex gap-2">
-                <Button variant="outline">Visualizza</Button>
+                <Button variant="outline" className="bg-white/50 backdrop-blur-sm border-white/30 text-primary hover:bg-white/70">Visualizza</Button>
                 <Button onClick={() => handleSignContract("#001")}>Firma (Simulato)</Button>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <span>Contratto Sponsor #002</span>
               <div className="flex gap-2">
-                <Button variant="outline">Visualizza</Button>
+                <Button variant="outline" className="bg-white/50 backdrop-blur-sm border-white/30 text-primary hover:bg-white/70">Visualizza</Button>
                 <Button onClick={() => handleSignContract("#002")}>Firma (Simulato)</Button>
               </div>
             </div>
@@ -116,19 +119,25 @@ const UserProfileWalletPage = () => {
         </CardContent>
       </Card>
 
-      {/* Sezione Chat Integrata (Placeholder) */}
-      <Card className="max-w-2xl mx-auto">
+      {/* Sezione Chat Integrata */}
+      <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
         <CardHeader>
           <CardTitle>Chat Integrata</CardTitle>
           <CardDescription>Accedi alle tue conversazioni.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button className="w-full" onClick={() => showSuccess("Apertura chat simulata.")}>Apri Chat</Button>
+          <Button className="w-full" onClick={() => setIsChatOpen(true)}>Apri Chat</Button>
           <p className="text-sm text-muted-foreground mt-2">
             (La funzionalità di chat con scambio di file protetti richiede un'implementazione backend.)
           </p>
         </CardContent>
       </Card>
+
+      <ChatDialog
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        chatPartner="Supporto ConnectHub" // You can make this dynamic later
+      />
     </div>
   );
 };
