@@ -39,16 +39,16 @@ const RegisterPage = () => {
     }
 
     if (data.user) {
-      // Insert the user's role into the profiles table
+      // The handle_new_user trigger on Supabase will create the profile with a default role.
+      // We now need to update that profile with the role selected by the user.
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([{ id: data.user.id, role: role }]);
+        .update({ role: role }) // Only update the role
+        .eq('id', data.user.id); // Target the specific user's profile
 
       if (profileError) {
-        console.error("Error inserting profile:", profileError); // Log detailed error for debugging
-        showError(`Errore durante l'inserimento del profilo: ${profileError.message}`); // Show exact technical error
-        // In a real application, you might want to handle the case where profile creation fails
-        // but the user is still created in auth.users (e.g., by deleting the auth user or prompting for retry).
+        console.error("Error updating profile role:", profileError); // Log detailed error for debugging
+        showError(`Errore durante l'aggiornamento del ruolo del profilo: ${profileError.message}`); // Show exact technical error
         setLoading(false);
         return;
       }
