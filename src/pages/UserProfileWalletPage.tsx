@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { showSuccess, showError } from "@/utils/toast";
-import ChatDialog from "@/components/ChatDialog"; // Import the new ChatDialog
+import ChatDialog from "@/components/ChatDialog";
+import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 
 interface Transaction {
   id: string;
@@ -15,6 +16,7 @@ interface Transaction {
   amount: number;
   type: 'credit' | 'debit';
   date: string;
+  user_id: string; // Link to the user
 }
 
 interface Notification {
@@ -22,69 +24,134 @@ interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+  user_id: string; // Link to the user
 }
 
 const UserProfileWalletPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [balance, setBalance] = useState(1250.00);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: "t1", description: "Pagamento per Campagna X", amount: 500.00, type: 'debit', date: "2024-07-20" },
-    { id: "t2", description: "Ricevuto da Sponsor Y", amount: 250.00, type: 'credit', date: "2024-07-18" },
-    { id: "t3", description: "Commissione ConnectHub", amount: 50.00, type: 'debit', date: "2024-07-15" },
-  ]);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    { id: "n1", message: "Nuovo messaggio da Supporto ConnectHub.", timestamp: "2024-07-22 10:30", read: false },
-    { id: "n2", message: "La tua proposta per 'Campagna Lancio' è stata accettata!", timestamp: "2024-07-21 14:00", read: false },
-    { id: "n3", message: "Un investitore è interessato alla tua startup 'EcoTech Solutions'.", timestamp: "2024-07-20 09:00", read: true },
-  ]);
+  // Balance will remain client-side for now, but ideally derived from transactions or user profile in DB
+  const [balance, setBalance] = useState(1250.00); 
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSignContract = (contractId: string) => {
+  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
+  const currentUserId = "simulated_user_id_123";
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      // Fetch transactions
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .order('date', { ascending: false });
+
+      if (transactionsError) {
+        console.error("Error fetching transactions:", transactionsError);
+        showError("Errore nel caricamento delle transazioni.");
+      } else {
+        setTransactions(transactionsData as Transaction[]);
+        // Calculate balance from transactions
+        const newBalance = transactionsData.reduce((acc, tx) => {
+          return tx.type === 'credit' ? acc + tx.amount : acc - tx.amount;
+        }, 0);
+        setBalance(newBalance);
+      }
+
+      // Fetch notifications
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .order('timestamp', { ascending: false });
+
+      if (notificationsError) {
+        console.error("Error fetching notifications:", notificationsError);
+        showError("Errore nel caricamento delle notifiche.");
+      } else {
+        setNotifications(notificationsData as Notification[]);
+      }
+      setLoading(false);
+    };
+
+    fetchUserData();
+  }, [currentUserId]);
+
+  const handleSignContract = async (contractId: string) => {
     showSuccess(`Contratto ${contractId} firmato digitalmente!`);
-    setNotifications(prev => [...prev, {
-      id: String(prev.length + 1),
+    const newNotification: Omit<Notification, 'id'> = {
       message: `Contratto ${contractId} firmato con successo.`,
       timestamp: new Date().toLocaleString(),
       read: false,
-    }]);
+      user_id: currentUserId,
+    };
+    const { data, error } = await supabase.from('notifications').insert([newNotification]).select();
+    if (error) {
+      console.error("Error adding notification:", error);
+    } else if (data && data.length > 0) {
+      setNotifications(prev => [data[0] as Notification, ...prev]);
+    }
   };
 
-  const handleMakePayment = (amount: number) => {
+  const handleMakePayment = async (amount: number) => {
     if (balance < amount) {
       showError("Saldo insufficiente per effettuare il pagamento.");
       return;
     }
-    setBalance(prev => prev - amount);
-    const newTransaction: Transaction = {
-      id: `t${transactions.length + 1}`,
+    
+    const newTransaction: Omit<Transaction, 'id'> = {
       description: `Pagamento simulato di €${amount}`,
       amount: amount,
       type: 'debit',
       date: new Date().toISOString().slice(0, 10),
+      user_id: currentUserId,
     };
-    setTransactions(prev => [newTransaction, ...prev]);
-    showSuccess(`Pagamento di €${amount} elaborato!`);
-    setNotifications(prev => [...prev, {
-      id: String(prev.length + 1),
-      message: `Pagamento di €${amount} effettuato.`,
-      timestamp: new Date().toLocaleString(),
-      read: false,
-    }]);
+
+    const { data: transactionData, error: transactionError } = await supabase.from('transactions').insert([newTransaction]).select();
+    if (transactionError) {
+      console.error("Error making payment:", transactionError);
+      showError("Errore durante l'elaborazione del pagamento.");
+    } else if (transactionData && transactionData.length > 0) {
+      setTransactions(prev => [transactionData[0] as Transaction, ...prev]);
+      setBalance(prev => prev - amount); // Update local balance
+      showSuccess(`Pagamento di €${amount} elaborato!`);
+
+      const newNotification: Omit<Notification, 'id'> = {
+        message: `Pagamento di €${amount} effettuato.`,
+        timestamp: new Date().toLocaleString(),
+        read: false,
+        user_id: currentUserId,
+      };
+      const { data: notificationData, error: notificationError } = await supabase.from('notifications').insert([newNotification]).select();
+      if (notificationError) {
+        console.error("Error adding payment notification:", notificationError);
+      } else if (notificationData && notificationData.length > 0) {
+        setNotifications(prev => [notificationData[0] as Notification, ...prev]);
+      }
+    }
   };
 
-  const handleAddNotification = (message: string) => {
-    setNotifications(prev => [...prev, {
-      id: String(prev.length + 1),
-      message,
-      timestamp: new Date().toLocaleString(),
-      read: false,
-    }]);
-  };
+  const handleMarkNotificationAsRead = async (id: string) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id);
 
-  const handleMarkNotificationAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      showError("Errore nell'aggiornamento della notifica.");
+    } else {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    }
   };
 
   const unreadNotificationsCount = notifications.filter(n => !n.read).length;
+
+  if (loading) {
+    return <div className="text-center text-muted-foreground mt-20">Caricamento dati utente...</div>;
+  }
 
   return (
     <div className="space-y-8 p-4">

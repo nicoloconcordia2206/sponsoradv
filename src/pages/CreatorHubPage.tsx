@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
 import { PlusCircle } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 
 interface JobBrief {
   id: string;
@@ -18,23 +19,28 @@ interface JobBrief {
   budget: number;
   company: string;
   deadline: string;
+  user_id: string; // Link to the user who created it
 }
 
 interface Proposal {
   id: string;
+  job_brief_id: string; // Link to the job brief
   jobTitle: string;
   socialLink: string;
   status: 'Inviata' | 'Accettata' | 'Rifiutata';
+  user_id: string; // Link to the user who sent it
 }
 
 const CreatorHubPage = () => {
   const { role } = useRole();
-  const [jobBriefs, setJobBriefs] = useState<JobBrief[]>([
-    { id: "1", title: "Campagna Lancio Nuovo Prodotto", description: "Cercasi influencer per recensione prodotto tech.", budget: 1500, deadline: "2024-12-31", company: "Tech Innovations Inc." },
-    { id: "2", title: "Promozione Evento Estivo", description: "Influencer per copertura evento musicale all'aperto.", budget: 1000, deadline: "2024-08-15", company: "Summer Fest Organizers" },
-    { id: "3", title: "Tutorial di Bellezza", description: "Influencer beauty per tutorial su nuovi cosmetici.", budget: 2000, deadline: "2024-10-01", company: "Glamour Cosmetics" },
-  ]);
+  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
+  const currentUserId = "simulated_user_id_123"; 
+  const simulatedCompanyName = "La Mia Azienda"; // For role 'Azienda'
+  const simulatedInfluencerName = "Influencer Mario"; // For role 'Influencer'
+
+  const [jobBriefs, setJobBriefs] = useState<JobBrief[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newBriefTitle, setNewBriefTitle] = useState("");
   const [newBriefDescription, setNewBriefDescription] = useState("");
@@ -46,50 +52,107 @@ const CreatorHubPage = () => {
   const [socialProfileLink, setSocialProfileLink] = useState("");
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
 
-  const handlePublishBrief = () => {
+  // Fetch data from Supabase on component mount
+  useEffect(() => {
+    const fetchJobBriefs = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from('job_briefs').select('*');
+      if (error) {
+        console.error("Error fetching job briefs:", error);
+        showError("Errore nel caricamento dei brief video.");
+      } else {
+        setJobBriefs(data as JobBrief[]);
+      }
+      setLoading(false);
+    };
+
+    const fetchProposals = async () => {
+      const { data, error } = await supabase.from('proposals').select('*');
+      if (error) {
+        console.error("Error fetching proposals:", error);
+        showError("Errore nel caricamento delle proposte.");
+      } else {
+        setProposals(data as Proposal[]);
+      }
+    };
+
+    fetchJobBriefs();
+    fetchProposals();
+  }, []);
+
+  const handlePublishBrief = async () => {
     if (!newBriefTitle || !newBriefDescription || !newBriefBudget || !newBriefDeadline) {
       showError("Per favore, compila tutti i campi per il brief.");
       return;
     }
-    const newBrief: JobBrief = {
-      id: String(jobBriefs.length + 1),
+    const newBrief: Omit<JobBrief, 'id'> = {
       title: newBriefTitle,
       description: newBriefDescription,
       budget: Number(newBriefBudget),
       deadline: newBriefDeadline,
-      company: "La Mia Azienda", // Simulated company name
+      company: simulatedCompanyName, // Simulated company name
+      user_id: currentUserId,
     };
-    setJobBriefs((prev) => [...prev, newBrief]);
-    showSuccess("Job Post pubblicato con successo!");
-    setNewBriefTitle("");
-    setNewBriefDescription("");
-    setNewBriefBudget("");
-    setNewBriefDeadline("");
-    setIsBriefDialogOpen(false);
+
+    const { data, error } = await supabase.from('job_briefs').insert([newBrief]).select();
+    if (error) {
+      console.error("Error publishing brief:", error);
+      showError("Errore durante la pubblicazione del brief.");
+    } else if (data && data.length > 0) {
+      setJobBriefs((prev) => [...prev, data[0] as JobBrief]);
+      showSuccess("Job Post pubblicato con successo!");
+      setNewBriefTitle("");
+      setNewBriefDescription("");
+      setNewBriefBudget("");
+      setNewBriefDeadline("");
+      setIsBriefDialogOpen(false);
+    }
   };
 
-  const handleSendProposal = () => {
+  const handleSendProposal = async () => {
     if (!socialProfileLink || !currentJobForProposal) {
       showError("Per favore, inserisci il link al tuo profilo social.");
       return;
     }
-    const newProposal: Proposal = {
-      id: String(proposals.length + 1),
+    const newProposal: Omit<Proposal, 'id'> = {
+      job_brief_id: currentJobForProposal.id,
       jobTitle: currentJobForProposal.title,
       socialLink: socialProfileLink,
       status: 'Inviata',
+      user_id: currentUserId,
     };
-    setProposals((prev) => [...prev, newProposal]);
-    showSuccess(`Proposta inviata per il lavoro: "${currentJobForProposal.title}"`);
-    setSocialProfileLink("");
-    setCurrentJobForProposal(null);
-    setIsProposalDialogOpen(false);
+
+    const { data, error } = await supabase.from('proposals').insert([newProposal]).select();
+    if (error) {
+      console.error("Error sending proposal:", error);
+      showError("Errore durante l'invio della proposta.");
+    } else if (data && data.length > 0) {
+      setProposals((prev) => [...prev, data[0] as Proposal]);
+      showSuccess(`Proposta inviata per il lavoro: "${currentJobForProposal.title}"`);
+      setSocialProfileLink("");
+      setCurrentJobForProposal(null);
+      setIsProposalDialogOpen(false);
+    }
   };
 
-  const handleAcceptProposal = (proposalId: string) => {
-    setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'Accettata' } : p));
-    showSuccess(`Proposta accettata! Contratto generato e sistema Escrow attivato.`);
+  const handleAcceptProposal = async (proposalId: string) => {
+    const { error } = await supabase
+      .from('proposals')
+      .update({ status: 'Accettata' })
+      .eq('id', proposalId);
+
+    if (error) {
+      console.error("Error accepting proposal:", error);
+      showError("Errore durante l'accettazione della proposta.");
+    } else {
+      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'Accettata' } : p));
+      showSuccess(`Proposta accettata! Contratto generato e sistema Escrow attivato.`);
+    }
   };
+
+  if (loading) {
+    return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
+  }
 
   return (
     <div className="space-y-8 p-4">
@@ -176,9 +239,9 @@ const CreatorHubPage = () => {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-4">
-            {jobBriefs.filter(job => job.company === "La Mia Azienda").length > 0 ? (
+            {jobBriefs.filter(job => job.user_id === currentUserId).length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
-                {jobBriefs.filter(job => job.company === "La Mia Azienda").map((job) => (
+                {jobBriefs.filter(job => job.user_id === currentUserId).map((job) => (
                   <Card key={job.id} className="bg-white/50 border-white/40">
                     <CardHeader>
                       <CardTitle>{job.title}</CardTitle>
@@ -187,9 +250,9 @@ const CreatorHubPage = () => {
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{job.description}</p>
                       <h4 className="font-semibold mt-4">Proposte Ricevute:</h4>
-                      {proposals.filter(p => p.jobTitle === job.title).length > 0 ? (
+                      {proposals.filter(p => p.job_brief_id === job.id).length > 0 ? (
                         <div className="space-y-2 mt-2">
-                          {proposals.filter(p => p.jobTitle === job.title).map(p => (
+                          {proposals.filter(p => p.job_brief_id === job.id).map(p => (
                             <div key={p.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded-md">
                               <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Link Social</a></span>
                               <span>Status: {p.status}</span>
@@ -264,8 +327,8 @@ const CreatorHubPage = () => {
 
           <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Le Tue Proposte Inviate</h3>
           <div className="max-w-2xl mx-auto space-y-4">
-            {proposals.length > 0 ? (
-              proposals.map(p => (
+            {proposals.filter(p => p.user_id === currentUserId).length > 0 ? (
+              proposals.filter(p => p.user_id === currentUserId).map(p => (
                 <Card key={p.id} className="bg-white/50 border-white/40">
                   <CardContent className="flex items-center justify-between p-4">
                     <div>

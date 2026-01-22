@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,26 +11,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
 import { PlusCircle } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 
 interface StartupPitch {
   id: string;
   name: string;
   sector: string;
-  description: string; // Added for 'Idea'
-  roi: string; // Simulated ROI
-  capital: number; // Changed to number for easier handling
-  equity: number; // Changed to number for easier handling
+  description: string;
+  roi: string;
+  capital: number;
+  equity: number;
   status: 'Disponibile' | 'In Trattativa' | 'Finanziata';
-  companyId: string; // To link to the company that uploaded it
+  user_id: string; // Link to the user who uploaded it
 }
 
 const InvestmentFloorPage = () => {
   const { role } = useRole();
-  const [startupPitches, setStartupPitches] = useState<StartupPitch[]>([
-    { id: "1", name: "EcoTech Solutions", sector: "Green Energy", description: "Piattaforma innovativa per il monitoraggio e l'ottimizzazione del consumo energetico.", roi: "20%", capital: 1000000, equity: 10, status: 'Disponibile', companyId: "Tech Innovations Inc." },
-    { id: "2", name: "HealthAI Diagnostics", sector: "Healthcare AI", description: "Soluzioni AI per la diagnosi precoce di malattie complesse.", roi: "30%", capital: 2000000, equity: 15, status: 'Disponibile', companyId: "HealthAI Corp." },
-    { id: "3", name: "FutureFood Labs", sector: "Food Tech", description: "Sviluppo di alimenti sostenibili a base vegetale per il mercato globale.", roi: "25%", capital: 750000, equity: 8, status: 'Disponibile', companyId: "Food Innovations Ltd." },
-  ]);
+  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
+  const currentUserId = "simulated_user_id_123";
+  const simulatedCompanyName = "La Mia Azienda"; // For role 'Azienda'
+
+  const [startupPitches, setStartupPitches] = useState<StartupPitch[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newPitchName, setNewPitchName] = useState("");
   const [newPitchSector, setNewPitchSector] = useState("");
@@ -39,13 +41,29 @@ const InvestmentFloorPage = () => {
   const [newPitchEquity, setNewPitchEquity] = useState<number | string>("");
   const [isPitchDialogOpen, setIsPitchDialogOpen] = useState(false);
 
-  const handleUploadPitch = () => {
+  // Fetch data from Supabase on component mount
+  useEffect(() => {
+    const fetchStartupPitches = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from('startup_pitches').select('*');
+      if (error) {
+        console.error("Error fetching startup pitches:", error);
+        showError("Errore nel caricamento dei pitch di startup.");
+      } else {
+        setStartupPitches(data as StartupPitch[]);
+      }
+      setLoading(false);
+    };
+
+    fetchStartupPitches();
+  }, []);
+
+  const handleUploadPitch = async () => {
     if (!newPitchName || !newPitchSector || !newPitchDescription || !newPitchCapital || !newPitchEquity) {
       showError("Per favore, compila tutti i campi per il pitch.");
       return;
     }
-    const newPitch: StartupPitch = {
-      id: String(startupPitches.length + 1),
+    const newPitch: Omit<StartupPitch, 'id'> = {
       name: newPitchName,
       sector: newPitchSector,
       description: newPitchDescription,
@@ -53,27 +71,48 @@ const InvestmentFloorPage = () => {
       capital: Number(newPitchCapital),
       equity: Number(newPitchEquity),
       status: 'Disponibile',
-      companyId: "La Mia Azienda", // Simulated current user's company
+      user_id: currentUserId, // Simulated current user's company
     };
-    setStartupPitches((prev) => [...prev, newPitch]);
-    showSuccess("Pitch di startup caricato con successo!");
-    setNewPitchName("");
-    setNewPitchSector("");
-    setNewPitchDescription("");
-    setNewPitchCapital("");
-    setNewPitchEquity("");
-    setIsPitchDialogOpen(false);
+
+    const { data, error } = await supabase.from('startup_pitches').insert([newPitch]).select();
+    if (error) {
+      console.error("Error uploading pitch:", error);
+      showError("Errore durante il caricamento del pitch.");
+    } else if (data && data.length > 0) {
+      setStartupPitches((prev) => [...prev, data[0] as StartupPitch]);
+      showSuccess("Pitch di startup caricato con successo!");
+      setNewPitchName("");
+      setNewPitchSector("");
+      setNewPitchDescription("");
+      setNewPitchCapital("");
+      setNewPitchEquity("");
+      setIsPitchDialogOpen(false);
+    }
   };
 
-  const handleSendLOI = (pitchId: string, startupName: string) => {
-    setStartupPitches(prev =>
-      prev.map(pitch =>
-        pitch.id === pitchId ? { ...pitch, status: 'In Trattativa' } : pitch
-      )
-    );
-    showSuccess(`Lettera di Intenti (LOI) inviata per ${startupName}! Lo stato è ora 'In Trattativa'.`);
-    // In a real app, this would trigger a notification for the company that owns the pitch.
+  const handleSendLOI = async (pitchId: string, startupName: string) => {
+    const { error } = await supabase
+      .from('startup_pitches')
+      .update({ status: 'In Trattativa' })
+      .eq('id', pitchId);
+
+    if (error) {
+      console.error("Error sending LOI:", error);
+      showError("Errore durante l'invio della Lettera di Intenti.");
+    } else {
+      setStartupPitches(prev =>
+        prev.map(pitch =>
+          pitch.id === pitchId ? { ...pitch, status: 'In Trattativa' } : pitch
+        )
+      );
+      showSuccess(`Lettera di Intenti (LOI) inviata per ${startupName}! Lo stato è ora 'In Trattativa'.`);
+      // In a real app, this would trigger a notification for the company that owns the pitch.
+    }
   };
+
+  if (loading) {
+    return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
+  }
 
   return (
     <div className="space-y-8 p-4">
@@ -143,9 +182,9 @@ const InvestmentFloorPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <h3 className="text-lg font-semibold">I Tuoi Pitch Pubblicati</h3>
-            {startupPitches.filter(pitch => pitch.companyId === "La Mia Azienda").length > 0 ? (
+            {startupPitches.filter(pitch => pitch.user_id === currentUserId).length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
-                {startupPitches.filter(pitch => pitch.companyId === "La Mia Azienda").map((pitch) => (
+                {startupPitches.filter(pitch => pitch.user_id === currentUserId).map((pitch) => (
                   <Card key={pitch.id} className="bg-white/50 border-white/40">
                     <CardHeader>
                       <CardTitle>{pitch.name}</CardTitle>

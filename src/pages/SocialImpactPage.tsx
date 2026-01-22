@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
 import { PlusCircle } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 
 interface SponsorshipRequest {
   id: string;
@@ -22,15 +23,17 @@ interface SponsorshipRequest {
   zip: string;
   organization: string;
   status: 'Attiva' | 'Finanziata';
+  user_id: string; // Link to the user who created it
 }
 
 const SocialImpactPage = () => {
   const { role } = useRole();
-  const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipRequest[]>([
-    { id: "1", title: "Rifacimento Campo da Calcio", description: "Supporto per la ristrutturazione del campo sportivo locale.", amountNeeded: 10000, purpose: "Ristrutturazione", city: "Roma", zip: "00100", organization: "ASD Calcio Roma", status: 'Attiva' },
-    { id: "2", title: "Acquisto Attrezzature per Banda Musicale", description: "Aiuta la banda giovanile ad acquistare nuovi strumenti.", amountNeeded: 5000, purpose: "Attrezzature", city: "Firenze", zip: "50100", organization: "Banda Musicale Firenze", status: 'Attiva' },
-    { id: "3", title: "Restauro Murale Storico", description: "Finanzia il restauro di un murale iconico nel centro città.", amountNeeded: 7500, purpose: "Restauro", city: "Napoli", zip: "80100", organization: "Comitato Quartiere Storico", status: 'Attiva' },
-  ]);
+  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
+  const currentUserId = "simulated_user_id_123";
+  const simulatedOrganizationName = "La Mia Organizzazione"; // For role 'Squadra/Negozio'
+
+  const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipRequest[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectDescription, setNewProjectDescription] = useState("");
@@ -40,37 +43,75 @@ const SocialImpactPage = () => {
   const [newProjectZip, setNewProjectZip] = useState("");
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 
-  const handlePublishProject = () => {
+  // Fetch data from Supabase on component mount
+  useEffect(() => {
+    const fetchSponsorshipRequests = async () => {
+      setLoading(true);
+      const { data, error } = await supabase.from('sponsorship_requests').select('*');
+      if (error) {
+        console.error("Error fetching sponsorship requests:", error);
+        showError("Errore nel caricamento dei progetti di sostegno.");
+      } else {
+        setSponsorshipRequests(data as SponsorshipRequest[]);
+      }
+      setLoading(false);
+    };
+
+    fetchSponsorshipRequests();
+  }, []);
+
+  const handlePublishProject = async () => {
     if (!newProjectTitle || !newProjectDescription || !newProjectAmount || !newProjectPurpose || !newProjectCity || !newProjectZip) {
       showError("Per favore, compila tutti i campi per il progetto.");
       return;
     }
-    const newProject: SponsorshipRequest = {
-      id: String(sponsorshipRequests.length + 1),
+    const newProject: Omit<SponsorshipRequest, 'id'> = {
       title: newProjectTitle,
       description: newProjectDescription,
       amountNeeded: Number(newProjectAmount),
       purpose: newProjectPurpose,
       city: newProjectCity,
       zip: newProjectZip,
-      organization: "La Mia Organizzazione", // Simulated organization name
+      organization: simulatedOrganizationName, // Simulated organization name
       status: 'Attiva',
+      user_id: currentUserId,
     };
-    setSponsorshipRequests((prev) => [...prev, newProject]);
-    showSuccess("Progetto di Sostegno caricato con successo!");
-    setNewProjectTitle("");
-    setNewProjectDescription("");
-    setNewProjectAmount("");
-    setNewProjectPurpose("");
-    setNewProjectCity("");
-    setNewProjectZip("");
-    setIsProjectDialogOpen(false);
+
+    const { data, error } = await supabase.from('sponsorship_requests').insert([newProject]).select();
+    if (error) {
+      console.error("Error publishing project:", error);
+      showError("Errore durante il caricamento del progetto.");
+    } else if (data && data.length > 0) {
+      setSponsorshipRequests((prev) => [...prev, data[0] as SponsorshipRequest]);
+      showSuccess("Progetto di Sostegno caricato con successo!");
+      setNewProjectTitle("");
+      setNewProjectDescription("");
+      setNewProjectAmount("");
+      setNewProjectPurpose("");
+      setNewProjectCity("");
+      setNewProjectZip("");
+      setIsProjectDialogOpen(false);
+    }
   };
 
-  const handleFundProject = (projectId: string, fundingType: string) => {
-    setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata' } : p));
-    showSuccess(`Progetto finanziato con ${fundingType}! Ricevuta per detrazione fiscale generata.`);
+  const handleFundProject = async (projectId: string, fundingType: string) => {
+    const { error } = await supabase
+      .from('sponsorship_requests')
+      .update({ status: 'Finanziata' })
+      .eq('id', projectId);
+
+    if (error) {
+      console.error("Error funding project:", error);
+      showError("Errore durante il finanziamento del progetto.");
+    } else {
+      setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata' } : p));
+      showSuccess(`Progetto finanziato con ${fundingType}! Ricevuta per detrazione fiscale generata.`);
+    }
   };
+
+  if (loading) {
+    return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
+  }
 
   return (
     <div className="space-y-8 p-4">
@@ -181,9 +222,9 @@ const SocialImpactPage = () => {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-4">
-            {sponsorshipRequests.filter(req => req.organization === "La Mia Organizzazione").length > 0 ? (
+            {sponsorshipRequests.filter(req => req.user_id === currentUserId).length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
-                {sponsorshipRequests.filter(req => req.organization === "La Mia Organizzazione").map((project) => (
+                {sponsorshipRequests.filter(req => req.user_id === currentUserId).map((project) => (
                   <Card key={project.id} className="bg-white/50 border-white/40">
                     <CardHeader>
                       <CardTitle>{project.title}</CardTitle>
@@ -228,7 +269,9 @@ const SocialImpactPage = () => {
                   <p className="text-sm">Scopo: {project.purpose}</p>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button className="w-full mt-4">Finanzia</Button>
+                      <Button className="w-full mt-4" disabled={project.status === 'Finanziata'}>
+                        {project.status === 'Finanziata' ? 'Finanziato' : 'Finanzia'}
+                      </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
