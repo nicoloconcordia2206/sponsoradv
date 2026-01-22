@@ -3,13 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "./components/Layout"; // Import the new Layout component
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import CreatorHubPage from "./pages/CreatorHubPage";
-import SocialImpactPage from "./pages/SocialImpactPage";
-import InvestmentFloorPage from "./pages/InvestmentFloorPage";
-import UserProfileWalletPage from "./pages/UserProfileWalletPage";
 
 const queryClient = new QueryClient();
 
@@ -20,15 +15,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}> {/* Use Layout to wrap main routes */}
-            <Route index element={<Index />} />
-            <Route path="creator-hub" element={<CreatorHubPage />} />
-            <Route path="social-impact" element={<SocialImpactPage />} />
-            <Route path="investment-floor" element={<InvestmentFloorPage />} />
-            <Route path="profile-wallet" element={<UserProfileWalletPage />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Route>
+          <Route path="/" element={<Index />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
