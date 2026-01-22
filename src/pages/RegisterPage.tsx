@@ -102,7 +102,7 @@ const RegisterPage = () => {
                   <SelectValue placeholder="Scegli il tuo ruolo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Azienda">Azienda</SelectItem>
+                  <SelectItem value="Azienda/Startup">Azienda/Startup</SelectItem>
                   <SelectItem value="Influencer">Influencer</SelectItem>
                   <SelectItem value="Squadra/Negozio">Squadra/Negozio</SelectItem>
                   <SelectItem value="Investitore">Investitore</SelectItem>
