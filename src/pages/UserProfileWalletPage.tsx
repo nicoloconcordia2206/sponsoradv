@@ -30,15 +30,26 @@ interface Notification {
 const UserProfileWalletPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   // Balance will remain client-side for now, but ideally derived from transactions or user profile in DB
-  const [balance, setBalance] = useState(1250.00); 
+  const [balance, setBalance] = useState(0.00); 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
-  const currentUserId = "simulated_user_id_123";
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+      setUserEmail(user?.email || null);
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
     const fetchUserData = async () => {
       setLoading(true);
       // Fetch transactions
@@ -81,6 +92,8 @@ const UserProfileWalletPage = () => {
 
   const handleSignContract = async (contractId: string) => {
     showSuccess(`Contratto ${contractId} firmato digitalmente!`);
+    if (!currentUserId) return;
+
     const newNotification: Omit<Notification, 'id'> = {
       message: `Contratto ${contractId} firmato con successo.`,
       timestamp: new Date().toLocaleString(),
@@ -100,6 +113,7 @@ const UserProfileWalletPage = () => {
       showError("Saldo insufficiente per effettuare il pagamento.");
       return;
     }
+    if (!currentUserId) return;
     
     const newTransaction: Omit<Transaction, 'id'> = {
       description: `Pagamento simulato di €${amount}`,
@@ -173,7 +187,7 @@ const UserProfileWalletPage = () => {
           </div>
           <div>
             <Label htmlFor="user-email">Email</Label>
-            <Input id="user-email" value="mario.rossi@example.com" readOnly className="bg-white/50 backdrop-blur-sm border-white/30" />
+            <Input id="user-email" value={userEmail || "N/A"} readOnly className="bg-white/50 backdrop-blur-sm border-white/30" />
           </div>
           <Separator />
           <h3 className="text-lg font-semibold">Documenti</h3>

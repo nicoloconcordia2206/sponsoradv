@@ -7,20 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
+import { showError } from "@/utils/toast";
 
 interface Message {
   id: string;
-  sender: string;
+  sender_id: string; // Changed from sender to sender_id
+  receiver_id: string; // New field for receiver
   text: string;
   timestamp: string;
-  user_id: string; // Link to the user who sent it
-  chat_partner_id: string; // Link to the chat partner
+  read: boolean;
 }
 
 interface ChatDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  chatPartner: string;
+  chatPartner: string; // This will be the display name, not the ID
 }
 
 const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner }) => {
@@ -29,27 +30,37 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Simulate user IDs for chat. In a real app, these would come from Supabase auth.
-  const currentUserId = "simulated_user_id_123";
-  const chatPartnerId = "simulated_chat_partner_id_456"; // e.g., "Supporto ConnectHub"
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // For simplicity, we'll assume a fixed chat partner ID for "Supporto ConnectHub"
+  // In a real app, this would be dynamic based on who the user is chatting with.
+  const chatPartnerId = "simulated_support_id_789"; 
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchUser();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !currentUserId) return;
 
     const fetchMessages = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`user_id.eq.${currentUserId},chat_partner_id.eq.${currentUserId}`) // Fetch messages where current user is sender or receiver
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`) // Fetch messages where current user is sender or receiver
         .order('timestamp', { ascending: true });
 
       if (error) {
         console.error("Error fetching messages:", error);
+        showError("Errore nel caricamento dei messaggi.");
       } else {
         setMessages(data as Message[]);
       }
@@ -67,8 +78,8 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
         (payload) => {
           const newMsg = payload.new as Message;
           // Only add if it's relevant to this chat (either sent by current user or to current user from this partner)
-          if ((newMsg.user_id === currentUserId && newMsg.chat_partner_id === chatPartnerId) ||
-              (newMsg.user_id === chatPartnerId && newMsg.chat_partner_id === currentUserId)) {
+          if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === chatPartnerId) ||
+              (newMsg.sender_id === chatPartnerId && newMsg.receiver_id === currentUserId)) {
             setMessages((prev) => [...prev, newMsg]);
           }
         }
@@ -85,14 +96,14 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() === "") return;
+    if (newMessage.trim() === "" || !currentUserId) return;
 
     const newMsg: Omit<Message, 'id'> = {
-      sender: "Tu", // Display name for current user
+      sender_id: currentUserId,
+      receiver_id: chatPartnerId,
       text: newMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      user_id: currentUserId,
-      chat_partner_id: chatPartnerId,
+      timestamp: new Date().toISOString(), // Use ISO string for better sorting/storage
+      read: false,
     };
 
     const { data, error } = await supabase.from('messages').insert([newMsg]).select();
@@ -107,11 +118,11 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
     // Simulate a response from the chat partner (this would be handled by a backend/AI in a real app)
     setTimeout(async () => {
       const botResponse: Omit<Message, 'id'> = {
-        sender: chatPartner,
+        sender_id: chatPartnerId, // Bot is the sender
+        receiver_id: currentUserId, // Current user is the receiver
         text: "Ho ricevuto il tuo messaggio!",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        user_id: chatPartnerId, // Bot is the sender
-        chat_partner_id: currentUserId, // Current user is the receiver
+        timestamp: new Date().toISOString(),
+        read: false,
       };
       const { error: botError } = await supabase.from('messages').insert([botResponse]);
       if (botError) {
@@ -144,18 +155,18 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.user_id === currentUserId ? "justify-end" : "justify-start"}`}
+                className={`flex ${msg.sender_id === currentUserId ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[70%] p-2 rounded-lg ${
-                    msg.user_id === currentUserId
+                    msg.sender_id === currentUserId
                       ? "bg-blue-500 text-white"
                       : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                   }`}
                 >
-                  <p className="text-xs font-semibold mb-1">{msg.sender}</p>
+                  <p className="text-xs font-semibold mb-1">{msg.sender_id === currentUserId ? "Tu" : chatPartner}</p>
                   <p className="text-sm">{msg.text}</p>
-                  <p className="text-xs text-right mt-1 opacity-75">{msg.timestamp}</p>
+                  <p className="text-xs text-right mt-1 opacity-75">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
               </div>
             ))}

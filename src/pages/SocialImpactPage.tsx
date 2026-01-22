@@ -27,9 +27,8 @@ interface SponsorshipRequest {
 }
 
 const SocialImpactPage = () => {
-  const { role } = useRole();
-  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
-  const currentUserId = "simulated_user_id_123";
+  const { role, loading: roleLoading } = useRole();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const simulatedOrganizationName = "La Mia Organizzazione"; // For role 'Squadra/Negozio'
 
   const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipRequest[]>([]);
@@ -43,8 +42,18 @@ const SocialImpactPage = () => {
   const [newProjectZip, setNewProjectZip] = useState("");
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 
-  // Fetch data from Supabase on component mount
   useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch data from Supabase on component mount or when currentUserId changes
+  useEffect(() => {
+    if (!currentUserId || roleLoading) return;
+
     const fetchSponsorshipRequests = async () => {
       setLoading(true);
       const { data, error } = await supabase.from('sponsorship_requests').select('*');
@@ -58,11 +67,11 @@ const SocialImpactPage = () => {
     };
 
     fetchSponsorshipRequests();
-  }, []);
+  }, [currentUserId, roleLoading]);
 
   const handlePublishProject = async () => {
-    if (!newProjectTitle || !newProjectDescription || !newProjectAmount || !newProjectPurpose || !newProjectCity || !newProjectZip) {
-      showError("Per favore, compila tutti i campi per il progetto.");
+    if (!newProjectTitle || !newProjectDescription || !newProjectAmount || !newProjectPurpose || !newProjectCity || !newProjectZip || !currentUserId) {
+      showError("Per favore, compila tutti i campi per il progetto e assicurati di essere loggato.");
       return;
     }
     const newProject: Omit<SponsorshipRequest, 'id'> = {
@@ -109,7 +118,7 @@ const SocialImpactPage = () => {
     }
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
   }
 

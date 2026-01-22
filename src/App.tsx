@@ -10,17 +10,51 @@ import CreatorHubPage from "./pages/CreatorHubPage";
 import SocialImpactPage from "./pages/SocialImpactPage";
 import InvestmentFloorPage from "./pages/InvestmentFloorPage";
 import UserProfileWalletPage from "./pages/UserProfileWalletPage";
+import LoginPage from "./pages/LoginPage"; // New import
+import RegisterPage from "./pages/RegisterPage"; // New import
 import { useRole } from "./lib/role-store";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "./lib/supabaseClient";
 
 const queryClient = new QueryClient();
 
 // A wrapper component to protect routes that require a role
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { role } = useRole();
-  if (!role) {
-    return <Navigate to="/" replace />;
+  const { role, loading: roleLoading } = useRole();
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setAuthLoading(false);
+    };
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (authLoading || roleLoading) {
+    return <div className="text-center text-muted-foreground mt-20">Caricamento...</div>;
   }
+
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!role) {
+    // If authenticated but no role assigned yet (e.g., just registered)
+    return <Navigate to="/register" replace />; // Or a dedicated role selection page
+  }
+
   return <>{children}</>;
 };
 
@@ -31,7 +65,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<Index />} /> {/* Index page will handle redirection */}
           <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route path="/creator-hub" element={<CreatorHubPage />} />
             <Route path="/social-impact" element={<SocialImpactPage />} />

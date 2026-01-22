@@ -4,16 +4,38 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRole } from "@/lib/role-store";
+import { useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { selectRole } = useRole();
+  const { role, loading: roleLoading } = useRole();
 
-  const handleRoleSelect = (role: string) => {
-    selectRole(role as any); // Cast to any for now, will refine types later if needed
-    navigate("/creator-hub"); // Redirect to a default dashboard page after role selection
-  };
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (roleLoading) return;
 
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        navigate("/login", { replace: true });
+      } else if (role) {
+        navigate("/creator-hub", { replace: true });
+      } else {
+        // Authenticated but no role assigned (e.g., just registered)
+        navigate("/register", { replace: true }); // Redirect to register to complete role selection
+      }
+    };
+
+    checkAuthAndRedirect();
+  }, [role, roleLoading, navigate]);
+
+  if (roleLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Caricamento...</div>;
+  }
+
+  // This component should ideally not render its content if redirection happens immediately.
+  // However, as a fallback or during loading, we can show a message.
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 text-foreground p-4">
       <div className="text-center p-8 max-w-4xl bg-white/30 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg">
@@ -21,54 +43,8 @@ const Index = () => {
           Benvenuto in ConnectHub
         </h1>
         <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
-          Seleziona il tuo ruolo per iniziare la tua esperienza sulla piattaforma.
+          Reindirizzamento in corso...
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-primary">Azienda</CardTitle>
-              <CardDescription>Pubblica brief video e trova influencer.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => handleRoleSelect("Azienda")} className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
-                Sono un'Azienda
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-primary">Influencer</CardTitle>
-              <CardDescription>Sfoglia job post e invia proposte.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => handleRoleSelect("Influencer")} className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
-                Sono un Influencer
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-primary">Squadra/Negozio</CardTitle>
-              <CardDescription>Cerca sponsorizzazioni per le tue iniziative locali.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => handleRoleSelect("Squadra/Negozio")} className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
-                Sono una Squadra/Negozio
-              </Button>
-            </CardContent>
-          </Card>
-          <Card className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md hover:shadow-xl transition-all duration-300">
-            <CardHeader>
-              <CardTitle className="text-2xl text-primary">Investitore</CardTitle>
-              <CardDescription>Scopri startup e invia lettere di intenti.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => handleRoleSelect("Investitore")} className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
-                Sono un Investitore
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

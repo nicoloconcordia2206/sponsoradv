@@ -32,11 +32,9 @@ interface Proposal {
 }
 
 const CreatorHubPage = () => {
-  const { role } = useRole();
-  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
-  const currentUserId = "simulated_user_id_123"; 
+  const { role, loading: roleLoading } = useRole();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const simulatedCompanyName = "La Mia Azienda"; // For role 'Azienda'
-  const simulatedInfluencerName = "Influencer Mario"; // For role 'Influencer'
 
   const [jobBriefs, setJobBriefs] = useState<JobBrief[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -52,11 +50,21 @@ const CreatorHubPage = () => {
   const [socialProfileLink, setSocialProfileLink] = useState("");
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
 
-  // Fetch data from Supabase on component mount
   useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch data from Supabase on component mount or when currentUserId changes
+  useEffect(() => {
+    if (!currentUserId || roleLoading) return;
+
     const fetchJobBriefs = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('job_briefs').select('*');
+      const { data, error } = await supabase.from('campaigns').select('*'); // Changed to 'campaigns'
       if (error) {
         console.error("Error fetching job briefs:", error);
         showError("Errore nel caricamento dei brief video.");
@@ -78,11 +86,11 @@ const CreatorHubPage = () => {
 
     fetchJobBriefs();
     fetchProposals();
-  }, []);
+  }, [currentUserId, roleLoading]);
 
   const handlePublishBrief = async () => {
-    if (!newBriefTitle || !newBriefDescription || !newBriefBudget || !newBriefDeadline) {
-      showError("Per favore, compila tutti i campi per il brief.");
+    if (!newBriefTitle || !newBriefDescription || !newBriefBudget || !newBriefDeadline || !currentUserId) {
+      showError("Per favore, compila tutti i campi per il brief e assicurati di essere loggato.");
       return;
     }
     const newBrief: Omit<JobBrief, 'id'> = {
@@ -94,7 +102,7 @@ const CreatorHubPage = () => {
       user_id: currentUserId,
     };
 
-    const { data, error } = await supabase.from('job_briefs').insert([newBrief]).select();
+    const { data, error } = await supabase.from('campaigns').insert([newBrief]).select(); // Changed to 'campaigns'
     if (error) {
       console.error("Error publishing brief:", error);
       showError("Errore durante la pubblicazione del brief.");
@@ -110,8 +118,8 @@ const CreatorHubPage = () => {
   };
 
   const handleSendProposal = async () => {
-    if (!socialProfileLink || !currentJobForProposal) {
-      showError("Per favore, inserisci il link al tuo profilo social.");
+    if (!socialProfileLink || !currentJobForProposal || !currentUserId) {
+      showError("Per favore, inserisci il link al tuo profilo social e assicurati di essere loggato.");
       return;
     }
     const newProposal: Omit<Proposal, 'id'> = {
@@ -150,7 +158,7 @@ const CreatorHubPage = () => {
     }
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
   }
 

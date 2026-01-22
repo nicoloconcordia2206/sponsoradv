@@ -26,9 +26,8 @@ interface StartupPitch {
 }
 
 const InvestmentFloorPage = () => {
-  const { role } = useRole();
-  // Simulate a user ID for now. In a real app, this would come from Supabase auth.
-  const currentUserId = "simulated_user_id_123";
+  const { role, loading: roleLoading } = useRole();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const simulatedCompanyName = "La Mia Azienda"; // For role 'Azienda'
 
   const [startupPitches, setStartupPitches] = useState<StartupPitch[]>([]);
@@ -41,11 +40,21 @@ const InvestmentFloorPage = () => {
   const [newPitchEquity, setNewPitchEquity] = useState<number | string>("");
   const [isPitchDialogOpen, setIsPitchDialogOpen] = useState(false);
 
-  // Fetch data from Supabase on component mount
   useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchUser();
+  }, []);
+
+  // Fetch data from Supabase on component mount or when currentUserId changes
+  useEffect(() => {
+    if (!currentUserId || roleLoading) return;
+
     const fetchStartupPitches = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('startup_pitches').select('*');
+      const { data, error } = await supabase.from('investments').select('*'); // Changed to 'investments'
       if (error) {
         console.error("Error fetching startup pitches:", error);
         showError("Errore nel caricamento dei pitch di startup.");
@@ -56,11 +65,11 @@ const InvestmentFloorPage = () => {
     };
 
     fetchStartupPitches();
-  }, []);
+  }, [currentUserId, roleLoading]);
 
   const handleUploadPitch = async () => {
-    if (!newPitchName || !newPitchSector || !newPitchDescription || !newPitchCapital || !newPitchEquity) {
-      showError("Per favore, compila tutti i campi per il pitch.");
+    if (!newPitchName || !newPitchSector || !newPitchDescription || !newPitchCapital || !newPitchEquity || !currentUserId) {
+      showError("Per favore, compila tutti i campi per il pitch e assicurati di essere loggato.");
       return;
     }
     const newPitch: Omit<StartupPitch, 'id'> = {
@@ -74,7 +83,7 @@ const InvestmentFloorPage = () => {
       user_id: currentUserId, // Simulated current user's company
     };
 
-    const { data, error } = await supabase.from('startup_pitches').insert([newPitch]).select();
+    const { data, error } = await supabase.from('investments').insert([newPitch]).select(); // Changed to 'investments'
     if (error) {
       console.error("Error uploading pitch:", error);
       showError("Errore durante il caricamento del pitch.");
@@ -92,7 +101,7 @@ const InvestmentFloorPage = () => {
 
   const handleSendLOI = async (pitchId: string, startupName: string) => {
     const { error } = await supabase
-      .from('startup_pitches')
+      .from('investments')
       .update({ status: 'In Trattativa' })
       .eq('id', pitchId);
 
@@ -110,7 +119,7 @@ const InvestmentFloorPage = () => {
     }
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
   }
 
@@ -208,7 +217,6 @@ const InvestmentFloorPage = () => {
         </Card>
       )}
 
-      {/* User Persona Investitore: Filtra e invia LOI */}
       {role === "Investitore" && (
         <>
           <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Startup in Cerca di Investimenti</h3>

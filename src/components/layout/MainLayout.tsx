@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, Outlet } from "react-router-dom";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -12,15 +12,38 @@ import {
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/lib/role-store";
+import { supabase } from "@/lib/supabaseClient";
+import { showError, showSuccess } from "@/utils/toast";
 
-const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { role, selectRole } = useRole();
+const MainLayout: React.FC = () => {
+  const { role, loading: roleLoading } = useRole();
   const navigate = useNavigate();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const handleChangeRole = () => {
-    selectRole(null); // Clear the selected role
-    navigate("/"); // Go back to the role selection page
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email);
+      }
+    };
+    fetchUserEmail();
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error logging out:", error);
+      showError("Errore durante il logout.");
+    } else {
+      showSuccess("Logout effettuato con successo!");
+      navigate("/login"); // Reindirizza alla pagina di login dopo il logout
+    }
   };
+
+  if (roleLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Caricamento layout...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -61,18 +84,23 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </NavigationMenuList>
         </NavigationMenu>
         <div className="flex items-center gap-4">
+          {userEmail && (
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {userEmail}
+            </span>
+          )}
           {role && (
             <span className="text-sm font-medium text-primary-foreground bg-primary/80 px-3 py-1 rounded-full">
               Ruolo: {role}
             </span>
           )}
-          <Button variant="outline" onClick={handleChangeRole} className="bg-white/50 backdrop-blur-sm border-white/30 text-primary hover:bg-white/70">
-            Cambia Ruolo
+          <Button variant="outline" onClick={handleLogout} className="bg-white/50 backdrop-blur-sm border-white/30 text-primary hover:bg-white/70">
+            Logout
           </Button>
         </div>
       </header>
       <main className="flex-grow container mx-auto p-4 pt-20"> {/* Added pt-20 to account for fixed header */}
-        {children}
+        <Outlet /> {/* This is where child routes will be rendered */}
       </main>
       <MadeWithDyad />
     </div>
