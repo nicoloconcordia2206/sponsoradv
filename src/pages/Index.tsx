@@ -1,17 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
-
-import { MadeWithDyad } from "@/components/made-with-dyad";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">
-          Start building your amazing project here!
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 text-foreground">
+      <div className="text-center p-8 max-w-3xl">
+        <h1 className="text-5xl font-extrabold mb-6 text-primary">
+          Welcome to ConnectHub
+        </h1>
+        <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+          Your multi-sector platform for professional and financial matchmaking.
+          Connect with influencers, sponsor local initiatives, and find investors for your startup.
         </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Link to="/creator-hub">Explore Creator Hub</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg" className="border-primary text-primary hover:bg-primary/10">
+            <Link to="/profile-wallet">Manage Your Profile</Link>
+          </Button>
+        </div>
       </div>
-      <MadeWithDyad />
     </div>
   );
 };
