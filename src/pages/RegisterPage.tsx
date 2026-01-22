@@ -33,7 +33,7 @@ const RegisterPage = () => {
 
     if (error) {
       console.error("Registration error:", error.message); // Log detailed error for debugging
-      showError("Errore durante la registrazione. L'email potrebbe essere già in uso o la password non è abbastanza forte."); // Generic error message
+      showError(`Errore di registrazione: ${error.message}`); // Show exact technical error
       setLoading(false);
       return;
     }
@@ -46,14 +46,14 @@ const RegisterPage = () => {
 
       if (profileError) {
         console.error("Error inserting profile:", profileError); // Log detailed error for debugging
-        showError("Errore durante la registrazione del profilo. Per favore, riprova."); // Generic error message
-        // Optionally, you might want to delete the user from auth.users if profile creation fails
-        // await supabase.auth.admin.deleteUser(data.user.id); // This requires service role key, not suitable for client-side
+        showError(`Errore durante l'inserimento del profilo: ${profileError.message}`); // Show exact technical error
+        // In a real application, you might want to handle the case where profile creation fails
+        // but the user is still created in auth.users (e.g., by deleting the auth user or prompting for retry).
         setLoading(false);
         return;
       }
 
-      showSuccess("Registrazione completata! Controlla la tua email per la verifica.");
+      showSuccess("Registrazione completata! Ora puoi accedere."); // No email verification needed
       navigate("/login"); // Reindirizza alla pagina di login dopo la registrazione
     }
     setLoading(false);
@@ -91,6 +91,7 @@ const RegisterPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6} // Enforce minimum password length
                 className="bg-white/50 backdrop-blur-sm border-white/30"
               />
             </div>
