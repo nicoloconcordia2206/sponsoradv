@@ -44,17 +44,26 @@ const DashboardPage = () => {
           if (campaignsError) throw campaignsError;
           newStats.campaigns = campaignsCount || 0;
 
+          // Fetch campaign IDs first
+          const { data: campaignIdsData, error: campaignIdsError } = await supabase
+            .from('campaigns')
+            .select('id')
+            .eq('user_id', currentUserId);
+          if (campaignIdsError) throw campaignIdsError;
+          const campaignIds = campaignIdsData ? campaignIdsData.map(c => c.id) : [];
+
+          // Then count proposals for those campaign IDs
           const { count: proposalsCount, error: proposalsError } = await supabase
             .from('proposals')
             .select('*', { count: 'exact', head: true })
-            .in('job_brief_id', supabase.from('campaigns').select('id').eq('user_id', currentUserId)); // Count proposals for *their* campaigns
+            .in('job_brief_id', campaignIds);
           if (proposalsError) throw proposalsError;
           newStats.proposals = proposalsCount || 0;
 
           const { count: investmentsCount, error: investmentsError } = await supabase
             .from('investments')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', currentUserId); // Pitches uploaded by this company
+            .eq('user_id', currentUserId);
           if (investmentsError) throw investmentsError;
           newStats.investments = investmentsCount || 0;
 
@@ -82,7 +91,6 @@ const DashboardPage = () => {
           if (proposalsError) throw proposalsError;
           newStats.proposals = proposalsCount || 0;
 
-          // For influencer, also count campaigns they can see (all public ones)
           const { count: campaignsCount, error: campaignsError } = await supabase
             .from('campaigns')
             .select('*', { count: 'exact', head: true });

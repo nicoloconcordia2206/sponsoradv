@@ -31,12 +31,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setAuthLoading(false);
+      console.log("ProtectedRoute: Session fetched:", session);
     };
     getSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setAuthLoading(false);
+      console.log("ProtectedRoute: Auth state changed, session:", session);
     });
 
     return () => {
@@ -49,14 +51,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!session) {
+    console.log("ProtectedRoute: No session, redirecting to /login");
     return <Navigate to="/login" replace />;
   }
 
   if (!role) {
-    // If authenticated but no role assigned yet (e.g., just registered)
-    return <Navigate to="/register" replace />; // Or a dedicated role selection page
+    console.log("ProtectedRoute: Session exists but no role, redirecting to /register. Current role:", role);
+    return <Navigate to="/register" replace />;
   }
-
+  console.log("ProtectedRoute: Session and role exist, rendering children. Role:", role);
   return <>{children}</>;
 };
 
