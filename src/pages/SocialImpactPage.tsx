@@ -17,7 +17,7 @@ interface SponsorshipRequest {
   id: string;
   title: string;
   description: string;
-  amountNeeded: number;
+  amount: number; // Changed from amountNeeded to amount
   purpose: string;
   city: string;
   zip: string;
@@ -91,7 +91,7 @@ const SocialImpactPage = () => {
     const newProject: Omit<SponsorshipRequest, 'id'> = {
       title: newProjectTitle,
       description: newProjectDescription,
-      amountNeeded: Number(newProjectAmount),
+      amount: Number(newProjectAmount), // Changed from amountNeeded to amount
       purpose: newProjectPurpose,
       city: newProjectCity,
       zip: newProjectZip,
@@ -255,7 +255,7 @@ const SocialImpactPage = () => {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{project.description}</p>
-                      <p className="font-medium">Cifra Necessaria: €{project.amountNeeded}</p>
+                      <p className="font-medium">Cifra Necessaria: €{project.amount}</p> {/* Changed from amountNeeded to amount */}
                       <p className="text-sm">Scopo: {project.purpose}</p>
                       <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${project.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                         {project.status}
@@ -288,7 +288,7 @@ const SocialImpactPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-sm text-muted-foreground">{project.description}</p>
-                  <p className="font-medium">Cifra Necessaria: €{project.amountNeeded}</p>
+                  <p className="font-medium">Cifra Necessaria: €{project.amount}</p> {/* Changed from amountNeeded to amount */}
                   <p className="text-sm">Scopo: {project.purpose}</p>
                   <Dialog>
                     <DialogTrigger asChild>
