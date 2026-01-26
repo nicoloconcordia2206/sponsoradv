@@ -55,18 +55,17 @@ const CreatorHubPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
       if (user) {
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('name') // Assuming 'name' column exists for company/organization name
           .eq('id', user.id)
           .single();
 
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error("Error fetching user profile name:", profileError);
-          showError("Errore nel caricamento del nome del profilo.");
-        } else if (profileData) {
+        // Only set the name if it exists, otherwise it remains null (handled by fallback)
+        if (profileData && profileData.name) {
           setUserProfileName(profileData.name);
         }
+        // No error toast here, as a missing name is handled by fallback text.
       }
     };
     fetchUserAndProfile();
