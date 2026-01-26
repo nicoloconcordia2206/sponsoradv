@@ -202,34 +202,34 @@ const InvestmentFloorPage = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pitch-name" className="text-right text-primary-foreground">
+                    <Label htmlFor="pitch-name" className="text-right text-foreground">
                       Nome Startup
                     </Label>
-                    <Input id="pitch-name" placeholder="Nome della tua azienda" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchName} onChange={(e) => setNewPitchName(e.target.value)} />
+                    <Input id="pitch-name" placeholder="Nome della tua azienda" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70" value={newPitchName} onChange={(e) => setNewPitchName(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pitch-sector" className="text-right text-primary-foreground">
+                    <Label htmlFor="pitch-sector" className="text-right text-foreground">
                       Settore
                     </Label>
-                    <Input id="pitch-sector" placeholder="Es. Tech, Green Energy" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchSector} onChange={(e) => setNewPitchSector(e.target.value)} />
+                    <Input id="pitch-sector" placeholder="Es. Tech, Green Energy" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70" value={newPitchSector} onChange={(e) => setNewPitchSector(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pitch-description" className="text-right text-primary-foreground">
+                    <Label htmlFor="pitch-description" className="text-right text-foreground">
                       Idea (Descrizione)
                     </Label>
-                    <Textarea id="pitch-description" placeholder="Descrivi la tua idea di business" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchDescription} onChange={(e) => setNewPitchDescription(e.target.value)} />
+                    <Textarea id="pitch-description" placeholder="Descrivi la tua idea di business" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70" value={newPitchDescription} onChange={(e) => setNewPitchDescription(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="capital-required" className="text-right text-primary-foreground">
+                    <Label htmlFor="capital-required" className="text-right text-foreground">
                       Capitale richiesto (€)
                     </Label>
-                    <Input id="capital-required" type="number" placeholder="Es. 500000" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchCapital} onChange={(e) => setNewPitchCapital(e.target.value)} />
+                    <Input id="capital-required" type="number" placeholder="Es. 500000" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70" value={newPitchCapital} onChange={(e) => setNewPitchCapital(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="equity-offered" className="text-right text-primary-foreground">
+                    <Label htmlFor="equity-offered" className="text-right text-foreground">
                       % di Quote Societarie offerte
                     </Label>
-                    <Input id="equity-offered" type="number" placeholder="Es. 15" max={100} min={0} className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchEquity} onChange={(e) => setNewPitchEquity(e.target.value)} />
+                    <Input id="equity-offered" type="number" placeholder="Es. 15" max={100} min={0} className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70" value={newPitchEquity} onChange={(e) => setNewPitchEquity(e.target.value)} />
                   </div>
                 </div>
                 <DialogFooter>

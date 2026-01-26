@@ -248,50 +248,50 @@ const CreatorHubPage = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-title" className="text-right text-primary-foreground">
+                    <Label htmlFor="brief-title" className="text-right text-foreground">
                       Titolo
                     </Label>
                     <Input
                       id="brief-title"
                       placeholder="Nome della campagna video"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newBriefTitle}
                       onChange={(e) => setNewBriefTitle(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-description" className="text-right text-primary-foreground">
+                    <Label htmlFor="brief-description" className="text-right text-foreground">
                       Descrizione
                     </Label>
                     <Textarea
                       id="brief-description"
                       placeholder="Dettagli sul contenuto, target, ecc."
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newBriefDescription}
                       onChange={(e) => setNewBriefDescription(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-budget" className="text-right text-primary-foreground">
+                    <Label htmlFor="brief-budget" className="text-right text-foreground">
                       Budget (€)
                     </Label>
                     <Input
                       id="brief-budget"
                       type="number"
                       placeholder="Es. 1000"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newBriefBudget}
                       onChange={(e) => setNewBriefBudget(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-deadline" className="text-right text-primary-foreground">
+                    <Label htmlFor="brief-deadline" className="text-right text-foreground">
                       Scadenza
                     </Label>
                     <Input
                       id="brief-deadline"
                       type="date"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newBriefDeadline}
                       onChange={(e) => setNewBriefDeadline(e.target.value)}
                     />
@@ -375,13 +375,13 @@ const CreatorHubPage = () => {
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                           <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="social-link" className="text-right text-primary-foreground">
+                            <Label htmlFor="social-link" className="text-right text-foreground">
                               Link Social
                             </Label>
                             <Input
                               id="social-link"
                               placeholder="https://instagram.com/tuo-profilo"
-                              className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                              className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                               value={socialProfileLink}
                               onChange={(e) => setSocialProfileLink(e.target.value)}
                             />

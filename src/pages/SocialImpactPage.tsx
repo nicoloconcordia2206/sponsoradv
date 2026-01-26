@@ -220,9 +220,9 @@ const SocialImpactPage = () => {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
-                        <Label className="text-primary-foreground">Opzioni di Finanziamento</Label>
+                        <Label className="text-foreground">Opzioni di Finanziamento</Label>
                         <Select onValueChange={(value) => handleFundProject(project.id, value)}>
-                          <SelectTrigger className="bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground">
+                          <SelectTrigger className="bg-white/50 backdrop-blur-sm border-white/30 text-foreground">
                             <SelectValue placeholder="Seleziona tipo di finanziamento" />
                           </SelectTrigger>
                           <SelectContent className="bg-white/80 backdrop-blur-md border-white/30">
@@ -277,74 +277,74 @@ const SocialImpactPage = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-title" className="text-right text-primary-foreground">
+                    <Label htmlFor="project-title" className="text-right text-foreground">
                       Titolo Progetto
                     </Label>
                     <Input
                       id="project-title"
                       placeholder="Es. Acquisto nuove divise per la squadra giovanile"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newProjectTitle}
                       onChange={(e) => setNewProjectTitle(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-description" className="text-right text-primary-foreground">
+                    <Label htmlFor="project-description" className="text-right text-foreground">
                       Descrizione
                     </Label>
                     <Textarea
                       id="project-description"
                       placeholder="Dettagli sul progetto e l'impatto atteso sulla comunità."
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newProjectDescription}
                       onChange={(e) => setNewProjectDescription(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-amount" className="text-right text-primary-foreground">
+                    <Label htmlFor="project-amount" className="text-right text-foreground">
                       Cifra Necessaria (€)
                     </Label>
                     <Input
                       id="project-amount"
                       type="number"
                       placeholder="Es. 5000"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newProjectAmount}
                       onChange={(e) => setNewProjectAmount(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-purpose" className="text-right text-primary-foreground">
+                    <Label htmlFor="project-purpose" className="text-right text-foreground">
                       Scopo
                     </Label>
                     <Input
                       id="project-purpose"
                       placeholder="Es. Acquisto nuove divise"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newProjectPurpose}
                       onChange={(e) => setNewProjectPurpose(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-city" className="text-right text-primary-foreground">
+                    <Label htmlFor="project-city" className="text-right text-foreground">
                       Città
                     </Label>
                     <Input
                       id="project-city"
                       placeholder="Es. Milano"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newProjectCity}
                       onChange={(e) => setNewProjectCity(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-zip" className="text-right text-primary-foreground">
+                    <Label htmlFor="project-zip" className="text-right text-foreground">
                       CAP
                     </Label>
                     <Input
                       id="project-zip"
                       placeholder="Es. 20100"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
                       value={newProjectZip}
                       onChange={(e) => setNewProjectZip(e.target.value)}
                     />
