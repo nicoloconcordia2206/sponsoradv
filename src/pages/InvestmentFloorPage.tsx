@@ -28,7 +28,7 @@ interface StartupPitch {
 const InvestmentFloorPage = () => {
   const { role, loading: roleLoading } = useRole();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const simulatedCompanyName = "La Mia Azienda"; // For role 'Azienda'
+  const [userProfileName, setUserProfileName] = useState<string | null>(null); // New state for user's profile name
 
   const [startupPitches, setStartupPitches] = useState<StartupPitch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,11 +41,27 @@ const InvestmentFloorPage = () => {
   const [isPitchDialogOpen, setIsPitchDialogOpen] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, username') // Try fetching both
+          .eq('id', user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching user profile name:", profileError);
+          // No showError here, as a missing name is handled by fallback text.
+        } else if (profileData) {
+          setUserProfileName(profileData.full_name || profileData.username || null);
+        } else {
+          setUserProfileName(null);
+        }
+      }
     };
-    fetchUser();
+    fetchUserAndProfile();
   }, []);
 
   // Fetch data from Supabase on component mount or when currentUserId changes
@@ -85,8 +101,15 @@ const InvestmentFloorPage = () => {
 
     const { data, error } = await supabase.from('investments').insert([newPitch]).select(); // Changed to 'investments'
     if (error) {
-      console.error("Error uploading pitch:", error); // Log detailed error for debugging
-      showError("Errore durante il caricamento del pitch."); // Generic error message
+      console.error("ERRORE SUPABASE (handleUploadPitch):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per caricare pitch.");
+      } else if (error.code === 'PGRST204') {
+        showError(`Errore: Colonna mancante nel database. Stai cercando di scrivere: name, sector, description, roi, capital, equity, status, user_id.`);
+      } else {
+        showError("Errore durante il caricamento del pitch."); // Generic error message
+      }
+      return;
     } else if (data && data.length > 0) {
       setStartupPitches((prev) => [...prev, data[0] as StartupPitch]);
       showSuccess("Pitch di startup caricato con successo!");
@@ -106,8 +129,13 @@ const InvestmentFloorPage = () => {
       .eq('id', pitchId);
 
     if (error) {
-      console.error("Error sending LOI:", error); // Log detailed error for debugging
-      showError("Errore durante l'invio della Lettera di Intenti."); // Generic error message
+      console.error("ERRORE SUPABASE (handleSendLOI):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per inviare LOI.");
+      } else {
+        showError("Errore durante l'invio della Lettera di Intenti."); // Generic error message
+      }
+      return;
     } else {
       setStartupPitches(prev =>
         prev.map(pitch =>
@@ -130,7 +158,6 @@ const InvestmentFloorPage = () => {
         Pitching di business e ricerca investitori.
       </p>
 
-      {/* User Persona Azienda/Startup: Carica Pitch Deck, Business Plan */}
       {role === "Azienda" && (
         <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">

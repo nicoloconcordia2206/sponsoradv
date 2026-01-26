@@ -28,7 +28,7 @@ const LoginPage = () => {
       showError("Credenziali non valide o errore di accesso. Riprova."); // Generic error message
     } else {
       showSuccess("Login effettuato con successo!");
-      navigate("/creator-hub"); // Reindirizza alla dashboard dopo il login
+      navigate("/"); // Reindirizza alla root per la gestione del ruolo
     }
     setLoading(false);
   };

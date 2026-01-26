@@ -20,7 +20,20 @@ const Index = () => {
       if (!session) {
         navigate("/login", { replace: true });
       } else if (role) {
-        navigate("/creator-hub", { replace: true });
+        // Redirect based on role after successful login and role assignment
+        switch (role) {
+          case 'Azienda':
+          case 'Squadra':
+          case 'Influencer':
+            navigate("/creator-hub", { replace: true });
+            break;
+          case 'Investitore':
+            navigate("/investment-floor", { replace: true });
+            break;
+          default:
+            navigate("/creator-hub", { replace: true }); // Default fallback
+            break;
+        }
       } else {
         // Authenticated but no role assigned (e.g., just registered)
         navigate("/register", { replace: true }); // Redirect to register to complete role selection

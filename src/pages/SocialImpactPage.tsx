@@ -17,7 +17,7 @@ interface SponsorshipRequest {
   id: string;
   title: string;
   description: string;
-  amount: number; // Changed from amountNeeded to amount
+  amount: number; // Using 'amount' as per database schema
   purpose: string;
   city: string;
   zip: string;
@@ -47,17 +47,20 @@ const SocialImpactPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
       if (user) {
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('name') // Assuming 'name' column exists for company/organization name
+          .select('full_name, username') // Try fetching both
           .eq('id', user.id)
           .single();
 
-        // Only set the name if it exists, otherwise it remains null (handled by fallback)
-        if (profileData && profileData.name) {
-          setUserProfileName(profileData.name);
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching user profile name:", profileError);
+          // No showError here, as a missing name is handled by fallback text.
+        } else if (profileData) {
+          setUserProfileName(profileData.full_name || profileData.username || null);
+        } else {
+          setUserProfileName(null);
         }
-        // No error toast here, as a missing name is handled by fallback text.
       }
     };
     fetchUserAndProfile();
@@ -90,7 +93,7 @@ const SocialImpactPage = () => {
     const newProject: Omit<SponsorshipRequest, 'id'> = {
       title: newProjectTitle,
       description: newProjectDescription,
-      amount: Number(newProjectAmount), // Changed from amountNeeded to amount
+      amount: Number(newProjectAmount), // Using 'amount'
       purpose: newProjectPurpose,
       city: newProjectCity,
       zip: newProjectZip,
@@ -101,8 +104,15 @@ const SocialImpactPage = () => {
 
     const { data, error } = await supabase.from('sponsorship_requests').insert([newProject]).select();
     if (error) {
-      console.error("Error publishing project:", error); // Log detailed error for debugging
-      showError("Errore durante il caricamento del progetto."); // Generic error message
+      console.error("ERRORE SUPABASE (handlePublishProject):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per pubblicare.");
+      } else if (error.code === 'PGRST204') {
+        showError(`Errore: Colonna mancante nel database. Stai cercando di scrivere: title, description, amount, purpose, city, zip, organization, user_id.`);
+      } else {
+        showError("Errore durante il caricamento del progetto."); // Generic error message
+      }
+      return;
     } else if (data && data.length > 0) {
       setSponsorshipRequests((prev) => [...prev, data[0] as SponsorshipRequest]);
       showSuccess("Progetto di Sostegno caricato con successo!");
@@ -123,8 +133,13 @@ const SocialImpactPage = () => {
       .eq('id', projectId);
 
     if (error) {
-      console.error("Error funding project:", error); // Log detailed error for debugging
-      showError("Errore durante il finanziamento del progetto."); // Generic error message
+      console.error("ERRORE SUPABASE (handleFundProject):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per finanziare progetti.");
+      } else {
+        showError("Errore durante il finanziamento del progetto."); // Generic error message
+      }
+      return;
     } else {
       setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata' } : p));
       showSuccess(`Progetto finanziato con ${fundingType}! Ricevuta per detrazione fiscale generata.`);
@@ -134,6 +149,59 @@ const SocialImpactPage = () => {
   if (loading || roleLoading) {
     return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
   }
+
+  const renderSponsorshipRequests = (requests: SponsorshipRequest[], showFundButton: boolean) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {requests.map((project) => (
+        <Card key={project.id} className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
+          <CardHeader>
+            <CardTitle>{project.title}</CardTitle>
+            <CardDescription>{project.city}, {project.zip}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">{project.description}</p>
+            <p className="font-medium">Cifra Necessaria: €{project.amount}</p>
+            <p className="text-sm">Scopo: {project.purpose}</p>
+            <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${project.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+              {project.status}
+            </span>
+            {showFundButton && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="w-full mt-4" disabled={project.status === 'Finanziata'}>
+                    {project.status === 'Finanziata' ? 'Finanziato' : 'Finanzia'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Finanzia "{project.title}"</DialogTitle>
+                    <DialogDescription>
+                      Scegli come desideri supportare questo progetto.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <Label>Opzioni di Finanziamento</Label>
+                    <Select onValueChange={(value) => handleFundProject(project.id, value)}>
+                      <SelectTrigger className="bg-white/50 backdrop-blur-sm border-white/30">
+                        <SelectValue placeholder="Seleziona tipo di finanziamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Finanziamento Totale">Finanziamento Totale</SelectItem>
+                        <SelectItem value="Quota Parziale">Quota Parziale</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={() => showSuccess("Azione di finanziamento simulata.")}>Conferma Finanziamento</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-8 p-4">
@@ -254,7 +322,7 @@ const SocialImpactPage = () => {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{project.description}</p>
-                      <p className="font-medium">Cifra Necessaria: €{project.amount}</p> {/* Changed from amountNeeded to amount */}
+                      <p className="font-medium">Cifra Necessaria: €{project.amount}</p>
                       <p className="text-sm">Scopo: {project.purpose}</p>
                       <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${project.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                         {project.status}
@@ -270,7 +338,7 @@ const SocialImpactPage = () => {
         </Card>
       )}
 
-      {role === "Investitore" && (
+      {(role === "Investitore" || role === "Azienda" || role === "Influencer") && (
         <>
           <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Progetti di Sostegno Disponibili</h3>
           <div className="max-w-2xl mx-auto mb-6 flex gap-4">
@@ -278,51 +346,7 @@ const SocialImpactPage = () => {
             <Input placeholder="Filtra per CAP" className="bg-white/50 backdrop-blur-sm border-white/30" />
             <Button>Cerca</Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sponsorshipRequests.map((project) => (
-              <Card key={project.id} className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
-                <CardHeader>
-                  <CardTitle>{project.title}</CardTitle>
-                  <CardDescription>{project.city}, {project.zip}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{project.description}</p>
-                  <p className="font-medium">Cifra Necessaria: €{project.amount}</p> {/* Changed from amountNeeded to amount */}
-                  <p className="text-sm">Scopo: {project.purpose}</p>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button className="w-full mt-4" disabled={project.status === 'Finanziata'}>
-                        {project.status === 'Finanziata' ? 'Finanziato' : 'Finanzia'}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Finanzia "{project.title}"</DialogTitle>
-                        <DialogDescription>
-                          Scegli come desideri supportare questo progetto.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <Label>Opzioni di Finanziamento</Label>
-                        <Select onValueChange={(value) => handleFundProject(project.id, value)}>
-                          <SelectTrigger className="bg-white/50 backdrop-blur-sm border-white/30">
-                            <SelectValue placeholder="Seleziona tipo di finanziamento" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Finanziamento Totale">Finanziamento Totale</SelectItem>
-                            <SelectItem value="Quota Parziale">Quota Parziale</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={() => showSuccess("Azione di finanziamento simulata.")}>Conferma Finanziamento</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {renderSponsorshipRequests(sponsorshipRequests, role === "Investitore")}
         </>
       )}
     </div>

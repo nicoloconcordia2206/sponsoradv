@@ -17,7 +17,7 @@ interface JobBrief {
   title: string;
   description: string;
   budget: number;
-  company: string;
+  company: string; // This needs to be fetched from profiles.full_name or username
   deadline: string;
   user_id: string; // Link to the user who created it
 }
@@ -55,17 +55,20 @@ const CreatorHubPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
       if (user) {
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('name') // Assuming 'name' column exists for company/organization name
+          .select('full_name, username') // Try fetching both
           .eq('id', user.id)
           .single();
 
-        // Only set the name if it exists, otherwise it remains null (handled by fallback)
-        if (profileData && profileData.name) {
-          setUserProfileName(profileData.name);
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching user profile name:", profileError);
+          // No showError here, as a missing name is handled by fallback text.
+        } else if (profileData) {
+          setUserProfileName(profileData.full_name || profileData.username || null);
+        } else {
+          setUserProfileName(null);
         }
-        // No error toast here, as a missing name is handled by fallback text.
       }
     };
     fetchUserAndProfile();
@@ -117,8 +120,15 @@ const CreatorHubPage = () => {
 
     const { data, error } = await supabase.from('campaigns').insert([newBrief]).select(); // Changed to 'campaigns'
     if (error) {
-      console.error("Error publishing brief:", error); // Log detailed error for debugging
-      showError("Errore durante la pubblicazione del brief."); // Generic error message
+      console.error("ERRORE SUPABASE (handlePublishBrief):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per pubblicare.");
+      } else if (error.code === 'PGRST204') {
+        showError(`Errore: Colonna mancante nel database. Stai cercando di scrivere: title, description, budget, deadline, company, user_id.`);
+      } else {
+        showError("Errore durante la pubblicazione del brief."); // Generic error message
+      }
+      return;
     } else if (data && data.length > 0) {
       setJobBriefs((prev) => [...prev, data[0] as JobBrief]);
       showSuccess("Job Post pubblicato con successo!");
@@ -145,8 +155,15 @@ const CreatorHubPage = () => {
 
     const { data, error } = await supabase.from('proposals').insert([newProposal]).select();
     if (error) {
-      console.error("Error sending proposal:", error); // Log detailed error for debugging
-      showError("Errore durante l'invio della proposta."); // Generic error message
+      console.error("ERRORE SUPABASE (handleSendProposal):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per inviare proposte.");
+      } else if (error.code === 'PGRST204') {
+        showError(`Errore: Colonna mancante nel database. Stai cercando di scrivere: job_brief_id, jobTitle, socialLink, status, user_id.`);
+      } else {
+        showError("Errore durante l'invio della proposta."); // Generic error message
+      }
+      return;
     } else if (data && data.length > 0) {
       setProposals((prev) => [...prev, data[0] as Proposal]);
       showSuccess(`Proposta inviata per il lavoro: "${currentJobForProposal.title}"`);
@@ -163,8 +180,13 @@ const CreatorHubPage = () => {
       .eq('id', proposalId);
 
     if (error) {
-      console.error("Error accepting proposal:", error); // Log detailed error for debugging
-      showError("Errore durante l'accettazione della proposta."); // Generic error message
+      console.error("ERRORE SUPABASE (handleAcceptProposal):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per accettare proposte.");
+      } else {
+        showError("Errore durante l'accettazione della proposta."); // Generic error message
+      }
+      return;
     } else {
       setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'Accettata' } : p));
       showSuccess(`Proposta accettata! Contratto generato e sistema Escrow attivato.`);
@@ -297,7 +319,7 @@ const CreatorHubPage = () => {
         </Card>
       )}
 
-      {role === "Influencer" && (
+      {(role === "Azienda" || role === "Squadra" || role === "Influencer") && (
         <>
           <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Job Post Disponibili</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -311,61 +333,67 @@ const CreatorHubPage = () => {
                   <p className="text-sm text-muted-foreground">{job.description}</p>
                   <p className="font-medium">Budget: €{job.budget}</p>
                   <p className="text-sm">Scadenza: {job.deadline}</p>
-                  <Dialog open={isProposalDialogOpen && currentJobForProposal?.id === job.id} onOpenChange={setIsProposalDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full mt-4" onClick={() => setCurrentJobForProposal(job)}>Proponiti</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Proponiti per "{job.title}"</DialogTitle>
-                        <DialogDescription>
-                          Inserisci il link al tuo profilo social per presentare la tua candidatura.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="social-link" className="text-right">
-                            Link Social
-                          </Label>
-                          <Input
-                            id="social-link"
-                            placeholder="https://instagram.com/tuo-profilo"
-                            className="col-span-3"
-                            value={socialProfileLink}
-                            onChange={(e) => setSocialProfileLink(e.target.value)}
-                          />
+                  {role === "Influencer" && (
+                    <Dialog open={isProposalDialogOpen && currentJobForProposal?.id === job.id} onOpenChange={setIsProposalDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full mt-4" onClick={() => setCurrentJobForProposal(job)}>Proponiti</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Proponiti per "{job.title}"</DialogTitle>
+                          <DialogDescription>
+                            Inserisci il link al tuo profilo social per presentare la tua candidatura.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="social-link" className="text-right">
+                              Link Social
+                            </Label>
+                            <Input
+                              id="social-link"
+                              placeholder="https://instagram.com/tuo-profilo"
+                              className="col-span-3"
+                              value={socialProfileLink}
+                              onChange={(e) => setSocialProfileLink(e.target.value)}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={handleSendProposal}>Invia Proposta</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                        <DialogFooter>
+                          <Button onClick={handleSendProposal}>Invia Proposta</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Le Tue Proposte Inviate</h3>
-          <div className="max-w-2xl mx-auto space-y-4">
-            {proposals.filter(p => p.user_id === currentUserId).length > 0 ? (
-              proposals.filter(p => p.user_id === currentUserId).map(p => (
-                <Card key={p.id} className="bg-white/50 border-white/40">
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <p className="font-medium">{p.jobTitle}</p>
-                      <p className="text-sm text-muted-foreground">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{p.socialLink}</a></p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-sm ${p.status === 'Accettata' ? 'bg-green-100 text-green-800' : p.status === 'Rifiutata' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                      {p.status}
-                    </span>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <p className="text-center text-muted-foreground">Nessuna proposta inviata.</p>
-            )}
-          </div>
+          {role === "Influencer" && (
+            <>
+              <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Le Tue Proposte Inviate</h3>
+              <div className="max-w-2xl mx-auto space-y-4">
+                {proposals.filter(p => p.user_id === currentUserId).length > 0 ? (
+                  proposals.filter(p => p.user_id === currentUserId).map(p => (
+                    <Card key={p.id} className="bg-white/50 border-white/40">
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div>
+                          <p className="font-medium">{p.jobTitle}</p>
+                          <p className="text-sm text-muted-foreground">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{p.socialLink}</a></p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm ${p.status === 'Accettata' ? 'bg-green-100 text-green-800' : p.status === 'Rifiutata' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                          {p.status}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground">Nessuna proposta inviata.</p>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
