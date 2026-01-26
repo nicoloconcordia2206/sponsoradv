@@ -131,7 +131,7 @@ const InvestmentFloorPage = () => {
       </p>
 
       {/* User Persona Azienda/Startup: Carica Pitch Deck, Business Plan */}
-      {role === "Azienda/Startup" && (
+      {role === "Azienda" && (
         <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

@@ -29,7 +29,7 @@ interface SponsorshipRequest {
 const SocialImpactPage = () => {
   const { role, loading: roleLoading } = useRole();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const simulatedOrganizationName = "La Mia Organizzazione"; // For role 'Squadra/Negozio'
+  const simulatedOrganizationName = "La Mia Organizzazione"; // For role 'Squadra'
 
   const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +129,7 @@ const SocialImpactPage = () => {
         Sponsorizzazioni per sport e attività locali.
       </p>
 
-      {role === "Squadra/Negozio" && (
+      {role === "Squadra" && (
         <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

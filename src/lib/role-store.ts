@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 import { showError } from '@/utils/toast'; // Import showError
 
-export type UserRole = 'Azienda/Startup' | 'Influencer' | 'Squadra/Negozio' | 'Investitore' | null;
+export type UserRole = 'Azienda' | 'Influencer' | 'Squadra' | 'Investitore' | null;
 
 export const useRole = () => {
   const [role, setRole] = useState<UserRole>(null);
