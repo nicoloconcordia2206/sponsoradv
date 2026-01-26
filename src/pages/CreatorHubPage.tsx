@@ -34,7 +34,7 @@ interface Proposal {
 const CreatorHubPage = () => {
   const { role, loading: roleLoading } = useRole();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const simulatedCompanyName = "La Mia Azienda"; // For role 'Azienda'
+  const [userProfileName, setUserProfileName] = useState<string | null>(null); // New state for user's profile name
 
   const [jobBriefs, setJobBriefs] = useState<JobBrief[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -51,11 +51,25 @@ const CreatorHubPage = () => {
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('name') // Assuming 'name' column exists for company/organization name
+          .eq('id', user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching user profile name:", profileError);
+          showError("Errore nel caricamento del nome del profilo.");
+        } else if (profileData) {
+          setUserProfileName(profileData.name);
+        }
+      }
     };
-    fetchUser();
+    fetchUserAndProfile();
   }, []);
 
   // Fetch data from Supabase on component mount or when currentUserId changes
@@ -98,7 +112,7 @@ const CreatorHubPage = () => {
       description: newBriefDescription,
       budget: Number(newBriefBudget),
       deadline: newBriefDeadline,
-      company: simulatedCompanyName, // Simulated company name
+      company: userProfileName || "Nome Azienda Sconosciuto", // Use fetched name or a fallback
       user_id: currentUserId,
     };
 

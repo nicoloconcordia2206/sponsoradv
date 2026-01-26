@@ -29,7 +29,7 @@ interface SponsorshipRequest {
 const SocialImpactPage = () => {
   const { role, loading: roleLoading } = useRole();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const simulatedOrganizationName = "La Mia Organizzazione"; // For role 'Squadra'
+  const [userProfileName, setUserProfileName] = useState<string | null>(null); // New state for user's profile name
 
   const [sponsorshipRequests, setSponsorshipRequests] = useState<SponsorshipRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,11 +43,25 @@ const SocialImpactPage = () => {
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('name') // Assuming 'name' column exists for company/organization name
+          .eq('id', user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching user profile name:", profileError);
+          showError("Errore nel caricamento del nome del profilo.");
+        } else if (profileData) {
+          setUserProfileName(profileData.name);
+        }
+      }
     };
-    fetchUser();
+    fetchUserAndProfile();
   }, []);
 
   // Fetch data from Supabase on component mount or when currentUserId changes
@@ -81,7 +95,7 @@ const SocialImpactPage = () => {
       purpose: newProjectPurpose,
       city: newProjectCity,
       zip: newProjectZip,
-      organization: simulatedOrganizationName, // Simulated organization name
+      organization: userProfileName || "Nome Organizzazione Sconosciuta", // Use fetched name or a fallback
       status: 'Attiva',
       user_id: currentUserId,
     };
