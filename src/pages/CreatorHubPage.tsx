@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, MessageSquare } from "lucide-react"; // Import MessageSquare icon
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
+import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
 interface JobBrief {
   id: string;
@@ -49,6 +50,10 @@ const CreatorHubPage = () => {
   const [currentJobForProposal, setCurrentJobForProposal] = useState<JobBrief | null>(null);
   const [socialProfileLink, setSocialProfileLink] = useState("");
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
+  const [chatPartnerName, setChatPartnerName] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -193,90 +198,107 @@ const CreatorHubPage = () => {
     }
   };
 
+  const openChatWithUser = async (userId: string) => {
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .select('full_name, username')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching chat partner profile:", error);
+      showError("Impossibile caricare il profilo del partner di chat.");
+      return;
+    }
+    setChatPartnerId(userId);
+    setChatPartnerName(profileData?.full_name || profileData?.username || "Utente Sconosciuto");
+    setIsChatOpen(true);
+  };
+
   if (loading || roleLoading) {
-    return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
+    return <div className="text-center text-primary-foreground mt-20">Caricamento dati...</div>;
   }
 
   return (
     <div className="space-y-8 p-4">
-      <h2 className="text-3xl font-bold text-center text-primary">Creator Hub</h2>
-      <p className="text-center text-muted-foreground">
-        Marketplace per video influencer e aziende.
+      <h2 className="text-3xl font-bold text-center text-primary-foreground">Creator Hub</h2>
+      <p className="text-center text-primary-foreground/80">
+        Il marketplace dinamico dove influencer e aziende si incontrano per creare campagne video di successo.
       </p>
 
       {(role === "Azienda" || role === "Squadra") && (
-        <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
+        <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>I Tuoi Brief Video</CardTitle>
-              <CardDescription>Gestisci le tue campagne e le proposte ricevute.</CardDescription>
+              <CardTitle className="text-primary-foreground">I Tuoi Brief Video</CardTitle>
+              <CardDescription className="text-primary-foreground/80">Gestisci le tue campagne e le proposte ricevute.</CardDescription>
             </div>
             <Dialog open={isBriefDialogOpen} onOpenChange={setIsBriefDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
+                <Button className="flex items-center gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all duration-200">
                   <PlusCircle className="h-4 w-4" /> Crea Brief Video
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
                 <DialogHeader>
-                  <DialogTitle>Crea un Nuovo Brief Video</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-primary">Crea un Nuovo Brief Video</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
                     Compila i dettagli per la tua prossima campagna video.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-title" className="text-right">
+                    <Label htmlFor="brief-title" className="text-right text-primary-foreground">
                       Titolo
                     </Label>
                     <Input
                       id="brief-title"
                       placeholder="Nome della campagna video"
-                      className="col-span-3"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
                       value={newBriefTitle}
                       onChange={(e) => setNewBriefTitle(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-description" className="text-right">
+                    <Label htmlFor="brief-description" className="text-right text-primary-foreground">
                       Descrizione
                     </Label>
                     <Textarea
                       id="brief-description"
                       placeholder="Dettagli sul contenuto, target, ecc."
-                      className="col-span-3"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
                       value={newBriefDescription}
                       onChange={(e) => setNewBriefDescription(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-budget" className="text-right">
+                    <Label htmlFor="brief-budget" className="text-right text-primary-foreground">
                       Budget (€)
                     </Label>
                     <Input
                       id="brief-budget"
                       type="number"
                       placeholder="Es. 1000"
-                      className="col-span-3"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
                       value={newBriefBudget}
                       onChange={(e) => setNewBriefBudget(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-deadline" className="text-right">
+                    <Label htmlFor="brief-deadline" className="text-right text-primary-foreground">
                       Scadenza
                     </Label>
                     <Input
                       id="brief-deadline"
                       type="date"
-                      className="col-span-3"
+                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
                       value={newBriefDeadline}
                       onChange={(e) => setNewBriefDeadline(e.target.value)}
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handlePublishBrief}>Pubblica Brief</Button>
+                  <Button onClick={handlePublishBrief} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Pubblica Brief</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -285,35 +307,40 @@ const CreatorHubPage = () => {
             {jobBriefs.filter(job => job.user_id === currentUserId).length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
                 {jobBriefs.filter(job => job.user_id === currentUserId).map((job) => (
-                  <Card key={job.id} className="bg-white/50 border-white/40">
+                  <Card key={job.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
                     <CardHeader>
-                      <CardTitle>{job.title}</CardTitle>
-                      <CardDescription>Budget: €{job.budget} | Scadenza: {job.deadline}</CardDescription>
+                      <CardTitle className="text-primary-foreground">{job.title}</CardTitle>
+                      <CardDescription className="text-primary-foreground/80">Budget: €{job.budget} | Scadenza: {job.deadline}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground">{job.description}</p>
-                      <h4 className="font-semibold mt-4">Proposte Ricevute:</h4>
+                      <p className="text-sm text-primary-foreground/80">{job.description}</p>
+                      <h4 className="font-semibold mt-4 text-primary-foreground">Proposte Ricevute:</h4>
                       {proposals.filter(p => p.job_brief_id === job.id).length > 0 ? (
                         <div className="space-y-2 mt-2">
                           {proposals.filter(p => p.job_brief_id === job.id).map(p => (
-                            <div key={p.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded-md">
-                              <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Link Social</a></span>
+                            <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-md border border-white/20">
+                              <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></span>
                               <span>Status: {p.status}</span>
                               {p.status === 'Inviata' && (
-                                <Button size="sm" onClick={() => handleAcceptProposal(p.id)}>Accetta</Button>
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={() => handleAcceptProposal(p.id)} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">Accetta</Button>
+                                  <Button size="sm" variant="outline" onClick={() => openChatWithUser(p.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                                    <MessageSquare className="h-4 w-4 mr-2" /> Messaggio
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground mt-2">Nessuna proposta ricevuta per questo brief.</p>
+                        <p className="text-sm text-primary-foreground/80 mt-2">Nessuna proposta ricevuta per questo brief.</p>
                       )}
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground">Nessun brief video pubblicato. Clicca '+' per crearne uno!</p>
+              <p className="text-center text-primary-foreground/80">Nessun brief video pubblicato. Clicca 'Crea Brief Video' per iniziare una nuova campagna!</p>
             )}
           </CardContent>
         </Card>
@@ -321,49 +348,55 @@ const CreatorHubPage = () => {
 
       {(role === "Azienda" || role === "Squadra" || role === "Influencer") && (
         <>
-          <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Job Post Disponibili</h3>
+          <h3 className="text-2xl font-semibold text-center mt-12 text-primary-foreground">Job Post Disponibili</h3>
+          <p className="text-center text-primary-foreground/80 mb-6">Esplora le opportunità di collaborazione e invia le tue proposte.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {jobBriefs.map((job) => (
-              <Card key={job.id} className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
+              <Card key={job.id} className="bg-white/20 backdrop-blur-md border border-white/30 shadow-md text-primary-foreground">
                 <CardHeader>
-                  <CardTitle>{job.title}</CardTitle>
-                  <CardDescription>{job.company}</CardDescription>
+                  <CardTitle className="text-primary-foreground">{job.title}</CardTitle>
+                  <CardDescription className="text-primary-foreground/80">{job.company}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{job.description}</p>
+                  <p className="text-sm text-primary-foreground/80">{job.description}</p>
                   <p className="font-medium">Budget: €{job.budget}</p>
                   <p className="text-sm">Scadenza: {job.deadline}</p>
                   {role === "Influencer" && (
                     <Dialog open={isProposalDialogOpen && currentJobForProposal?.id === job.id} onOpenChange={setIsProposalDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button className="w-full mt-4" onClick={() => setCurrentJobForProposal(job)}>Proponiti</Button>
+                        <Button className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" onClick={() => setCurrentJobForProposal(job)}>Proponiti</Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
                         <DialogHeader>
-                          <DialogTitle>Proponiti per "{job.title}"</DialogTitle>
-                          <DialogDescription>
+                          <DialogTitle className="text-primary">Proponiti per "{job.title}"</DialogTitle>
+                          <DialogDescription className="text-muted-foreground">
                             Inserisci il link al tuo profilo social per presentare la tua candidatura.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                           <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="social-link" className="text-right">
+                            <Label htmlFor="social-link" className="text-right text-primary-foreground">
                               Link Social
                             </Label>
                             <Input
                               id="social-link"
                               placeholder="https://instagram.com/tuo-profilo"
-                              className="col-span-3"
+                              className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70"
                               value={socialProfileLink}
                               onChange={(e) => setSocialProfileLink(e.target.value)}
                             />
                           </div>
                         </div>
                         <DialogFooter>
-                          <Button onClick={handleSendProposal}>Invia Proposta</Button>
+                          <Button onClick={handleSendProposal} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Invia Proposta</Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
+                  )}
+                  {(role === "Azienda" || role === "Squadra") && (
+                    <Button className="w-full mt-4 bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200" onClick={() => openChatWithUser(job.user_id)}>
+                      <MessageSquare className="h-4 w-4 mr-2" /> Contatta Azienda
+                    </Button>
                   )}
                 </CardContent>
               </Card>
@@ -372,30 +405,46 @@ const CreatorHubPage = () => {
 
           {role === "Influencer" && (
             <>
-              <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Le Tue Proposte Inviate</h3>
+              <h3 className="text-2xl font-semibold text-center mt-12 text-primary-foreground">Le Tue Proposte Inviate</h3>
+              <p className="text-center text-primary-foreground/80 mb-6">Tieni traccia dello stato delle tue candidature.</p>
               <div className="max-w-2xl mx-auto space-y-4">
                 {proposals.filter(p => p.user_id === currentUserId).length > 0 ? (
                   proposals.filter(p => p.user_id === currentUserId).map(p => (
-                    <Card key={p.id} className="bg-white/50 border-white/40">
+                    <Card key={p.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
                       <CardContent className="flex items-center justify-between p-4">
                         <div>
-                          <p className="font-medium">{p.jobTitle}</p>
-                          <p className="text-sm text-muted-foreground">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{p.socialLink}</a></p>
+                          <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
+                          <p className="text-sm text-primary-foreground/80">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-sm ${p.status === 'Accettata' ? 'bg-green-100 text-green-800' : p.status === 'Rifiutata' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                          {p.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-sm ${p.status === 'Accettata' ? 'bg-green-100 text-green-800' : p.status === 'Rifiutata' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {p.status}
+                          </span>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            const jobBrief = jobBriefs.find(job => job.id === p.job_brief_id);
+                            if (jobBrief) openChatWithUser(jobBrief.user_id);
+                          }} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))
                 ) : (
-                  <p className="text-center text-muted-foreground">Nessuna proposta inviata.</p>
+                  <p className="text-center text-primary-foreground/80">Nessuna proposta inviata. Inizia a proporti per i job post disponibili!</p>
                 )}
               </div>
             </>
           )}
         </>
       )}
+
+      <ChatDialog
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        chatPartner={chatPartnerName || "Utente Sconosciuto"}
+        chatPartnerId={chatPartnerId || ""}
+      />
     </div>
   );
 };

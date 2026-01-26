@@ -10,8 +10,10 @@ import CreatorHubPage from "./pages/CreatorHubPage";
 import SocialImpactPage from "./pages/SocialImpactPage";
 import InvestmentFloorPage from "./pages/InvestmentFloorPage";
 import UserProfileWalletPage from "./pages/UserProfileWalletPage";
-import LoginPage from "./pages/LoginPage"; // New import
-import RegisterPage from "./pages/RegisterPage"; // New import
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import DashboardPage from "./pages/DashboardPage"; // New import
+import MessagesPage from "./pages/MessagesPage"; // New import
 import { useRole } from "./lib/role-store";
 import React, { useEffect, useState } from "react";
 import { supabase } from "./lib/supabaseClient";
@@ -69,10 +71,12 @@ const App = () => (
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<Index />} /> {/* Index page will handle redirection */}
           <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<DashboardPage />} /> {/* New Dashboard Route */}
             <Route path="/creator-hub" element={<CreatorHubPage />} />
             <Route path="/social-impact" element={<SocialImpactPage />} />
             <Route path="/investment-floor" element={<InvestmentFloorPage />} />
             <Route path="/profile-wallet" element={<UserProfileWalletPage />} />
+            <Route path="/messages" element={<MessagesPage />} /> {/* New Messages Route */}
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

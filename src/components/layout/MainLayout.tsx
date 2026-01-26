@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useRole } from "@/lib/role-store";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
-import { Home, Users, TrendingUp, Wallet, LogOut } from "lucide-react"; // Import Lucide icons
+import { Home, Users, TrendingUp, Wallet, LogOut, MessageSquareText, LayoutDashboard } from "lucide-react"; // Import Lucide icons
 
 const MainLayout: React.FC = () => {
   const { role, loading: roleLoading } = useRole();
@@ -47,38 +47,52 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="bg-primary text-primary-foreground px-6 py-4 flex items-center justify-between shadow-lg fixed w-full z-10">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-700 to-indigo-900 text-primary-foreground">
+      <header className="bg-primary/80 backdrop-blur-md text-primary-foreground px-6 py-4 flex items-center justify-between shadow-lg fixed w-full z-10 border-b border-white/30">
         <Link to="/" className="text-3xl font-extrabold tracking-tight">
           ConnectHub
         </Link>
         <NavigationMenu>
           <NavigationMenuList className="space-x-2">
             <NavigationMenuItem>
+              <Link to="/dashboard">
+                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200`}>
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
               <Link to="/creator-hub">
-                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg px-4 py-2 flex items-center gap-2`}>
+                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200`}>
                   <Users className="h-4 w-4" /> Creator
                 </NavigationMenuLink>
               </Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
               <Link to="/social-impact">
-                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg px-4 py-2 flex items-center gap-2`}>
+                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200`}>
                   <Home className="h-4 w-4" /> Social Impact
                 </NavigationMenuLink>
               </Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
               <Link to="/investment-floor">
-                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg px-4 py-2 flex items-center gap-2`}>
+                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200`}>
                   <TrendingUp className="h-4 w-4" /> Investimenti
                 </NavigationMenuLink>
               </Link>
             </NavigationMenuItem>
             <NavigationMenuItem>
               <Link to="/profile-wallet">
-                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg px-4 py-2 flex items-center gap-2`}>
+                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200`}>
                   <Wallet className="h-4 w-4" /> Profilo
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link to="/messages">
+                <NavigationMenuLink className={`${navigationMenuTriggerStyle()} bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-200`}>
+                  <MessageSquareText className="h-4 w-4" /> Messaggi
                 </NavigationMenuLink>
               </Link>
             </NavigationMenuItem>
@@ -95,7 +109,7 @@ const MainLayout: React.FC = () => {
               Ruolo: {role}
             </span>
           )}
-          <Button variant="secondary" onClick={handleLogout} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg flex items-center gap-2">
+          <Button variant="secondary" onClick={handleLogout} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 rounded-lg flex items-center gap-2 transition-all duration-200">
             <LogOut className="h-4 w-4" /> Logout
           </Button>
         </div>

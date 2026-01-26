@@ -60,18 +60,18 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md bg-white/40 backdrop-blur-sm border border-white/30 shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-700 to-indigo-900 p-4">
+      <Card className="w-full max-w-md bg-white/20 backdrop-blur-md border border-white/30 shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-primary">Registrati a ConnectHub</CardTitle>
-          <CardDescription className="text-muted-foreground">
+          <CardTitle className="text-3xl font-bold text-primary-foreground">Registrati a ConnectHub</CardTitle>
+          <CardDescription className="text-primary-foreground/80">
             Crea il tuo account e seleziona il tuo ruolo.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleRegister} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-primary-foreground">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -79,11 +79,11 @@ const RegisterPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white/50 backdrop-blur-sm border-white/30"
+                className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-primary-foreground">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -92,16 +92,16 @@ const RegisterPage = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6} // Enforce minimum password length
-                className="bg-white/50 backdrop-blur-sm border-white/30"
+                className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role">Seleziona il tuo Ruolo</Label>
+              <Label htmlFor="role" className="text-primary-foreground">Seleziona il tuo Ruolo</Label>
               <Select onValueChange={(value: UserRole) => setRole(value)} value={role || ""}>
-                <SelectTrigger className="w-full bg-white/50 backdrop-blur-sm border-white/30">
+                <SelectTrigger className="w-full bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground">
                   <SelectValue placeholder="Scegli il tuo ruolo" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white/80 backdrop-blur-md border-white/30">
                   <SelectItem value="Azienda">Azienda</SelectItem>
                   <SelectItem value="Influencer">Influencer</SelectItem>
                   <SelectItem value="Squadra">Squadra</SelectItem>
@@ -113,9 +113,9 @@ const RegisterPage = () => {
               {loading ? "Registrazione in corso..." : "Registrati"}
             </Button>
           </form>
-          <p className="mt-6 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-primary-foreground/80">
             Hai già un account?{" "}
-            <Link to="/login" className="text-blue-600 hover:underline">
+            <Link to="/login" className="text-blue-300 hover:underline">
               Accedi
             </Link>
           </p>

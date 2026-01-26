@@ -20,20 +20,8 @@ const Index = () => {
       if (!session) {
         navigate("/login", { replace: true });
       } else if (role) {
-        // Redirect based on role after successful login and role assignment
-        switch (role) {
-          case 'Azienda':
-          case 'Squadra':
-          case 'Influencer':
-            navigate("/creator-hub", { replace: true });
-            break;
-          case 'Investitore':
-            navigate("/investment-floor", { replace: true });
-            break;
-          default:
-            navigate("/creator-hub", { replace: true }); // Default fallback
-            break;
-        }
+        // Redirect to dashboard after successful login and role assignment
+        navigate("/dashboard", { replace: true });
       } else {
         // Authenticated but no role assigned (e.g., just registered)
         navigate("/register", { replace: true }); // Redirect to register to complete role selection
@@ -47,17 +35,15 @@ const Index = () => {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Caricamento...</div>;
   }
 
-  // This component should ideally not render its content if redirection happens immediately.
-  // However, as a fallback or during loading, we can show a message.
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 text-foreground p-4">
-      <Card className="text-center p-8 max-w-4xl bg-white/80 backdrop-blur-md border border-white/50 rounded-xl shadow-2xl">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-700 to-indigo-900 text-foreground p-4">
+      <Card className="text-center p-8 max-w-4xl bg-white/20 backdrop-blur-md border border-white/30 rounded-xl shadow-2xl">
         <CardHeader>
-          <CardTitle className="text-5xl font-extrabold mb-4 text-primary drop-shadow-md">
+          <CardTitle className="text-5xl font-extrabold mb-4 text-primary-foreground drop-shadow-md">
             Benvenuto in ConnectHub
           </CardTitle>
-          <CardDescription className="text-xl text-muted-foreground leading-relaxed">
-            Reindirizzamento in corso...
+          <CardDescription className="text-xl text-primary-foreground/80 leading-relaxed">
+            La piattaforma che connette talenti, progetti e investitori. Reindirizzamento in corso...
           </CardDescription>
         </CardHeader>
         <CardContent>

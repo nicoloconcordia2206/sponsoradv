@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, MessageSquare } from "lucide-react"; // Import MessageSquare icon
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
+import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
 interface StartupPitch {
   id: string;
@@ -39,6 +40,10 @@ const InvestmentFloorPage = () => {
   const [newPitchCapital, setNewPitchCapital] = useState<number | string>("");
   const [newPitchEquity, setNewPitchEquity] = useState<number | string>("");
   const [isPitchDialogOpen, setIsPitchDialogOpen] = useState(false);
+
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
+  const [chatPartnerName, setChatPartnerName] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -147,87 +152,104 @@ const InvestmentFloorPage = () => {
     }
   };
 
+  const openChatWithUser = async (userId: string) => {
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .select('full_name, username')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching chat partner profile:", error);
+      showError("Impossibile caricare il profilo del partner di chat.");
+      return;
+    }
+    setChatPartnerId(userId);
+    setChatPartnerName(profileData?.full_name || profileData?.username || "Utente Sconosciuto");
+    setIsChatOpen(true);
+  };
+
   if (loading || roleLoading) {
-    return <div className="text-center text-muted-foreground mt-20">Caricamento dati...</div>;
+    return <div className="text-center text-primary-foreground mt-20">Caricamento dati...</div>;
   }
 
   return (
     <div className="space-y-8 p-4">
-      <h2 className="text-3xl font-bold text-center text-primary">Investment Floor</h2>
-      <p className="text-center text-muted-foreground">
-        Pitching di business e ricerca investitori.
+      <h2 className="text-3xl font-bold text-center text-primary-foreground">Investment Floor</h2>
+      <p className="text-center text-primary-foreground/80">
+        La tua porta d'accesso a opportunità di investimento innovative e pitch di startup promettenti.
       </p>
 
       {role === "Azienda" && (
-        <Card className="max-w-2xl mx-auto bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
+        <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Carica la tua Startup</CardTitle>
-              <CardDescription>Presenta la tua idea a potenziali investitori.</CardDescription>
+              <CardTitle className="text-primary-foreground">Carica la tua Startup</CardTitle>
+              <CardDescription className="text-primary-foreground/80">Presenta la tua idea a potenziali investitori.</CardDescription>
             </div>
             <Dialog open={isPitchDialogOpen} onOpenChange={setIsPitchDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
+                <Button className="flex items-center gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all duration-200">
                   <PlusCircle className="h-4 w-4" /> Carica Pitch
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
                 <DialogHeader>
-                  <DialogTitle>Carica un Nuovo Pitch di Startup</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-primary">Carica un Nuovo Pitch di Startup</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
                     Compila i dettagli per presentare la tua startup.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pitch-name" className="text-right">
+                    <Label htmlFor="pitch-name" className="text-right text-primary-foreground">
                       Nome Startup
                     </Label>
-                    <Input id="pitch-name" placeholder="Nome della tua azienda" className="col-span-3" value={newPitchName} onChange={(e) => setNewPitchName(e.target.value)} />
+                    <Input id="pitch-name" placeholder="Nome della tua azienda" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchName} onChange={(e) => setNewPitchName(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pitch-sector" className="text-right">
+                    <Label htmlFor="pitch-sector" className="text-right text-primary-foreground">
                       Settore
                     </Label>
-                    <Input id="pitch-sector" placeholder="Es. Tech, Green Energy" className="col-span-3" value={newPitchSector} onChange={(e) => setNewPitchSector(e.target.value)} />
+                    <Input id="pitch-sector" placeholder="Es. Tech, Green Energy" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchSector} onChange={(e) => setNewPitchSector(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="pitch-description" className="text-right">
+                    <Label htmlFor="pitch-description" className="text-right text-primary-foreground">
                       Idea (Descrizione)
                     </Label>
-                    <Textarea id="pitch-description" placeholder="Descrivi la tua idea di business" className="col-span-3" value={newPitchDescription} onChange={(e) => setNewPitchDescription(e.target.value)} />
+                    <Textarea id="pitch-description" placeholder="Descrivi la tua idea di business" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchDescription} onChange={(e) => setNewPitchDescription(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="capital-required" className="text-right">
+                    <Label htmlFor="capital-required" className="text-right text-primary-foreground">
                       Capitale richiesto (€)
                     </Label>
-                    <Input id="capital-required" type="number" placeholder="Es. 500000" className="col-span-3" value={newPitchCapital} onChange={(e) => setNewPitchCapital(e.target.value)} />
+                    <Input id="capital-required" type="number" placeholder="Es. 500000" className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchCapital} onChange={(e) => setNewPitchCapital(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="equity-offered" className="text-right">
+                    <Label htmlFor="equity-offered" className="text-right text-primary-foreground">
                       % di Quote Societarie offerte
                     </Label>
-                    <Input id="equity-offered" type="number" placeholder="Es. 15" max={100} min={0} className="col-span-3" value={newPitchEquity} onChange={(e) => setNewPitchEquity(e.target.value)} />
+                    <Input id="equity-offered" type="number" placeholder="Es. 15" max={100} min={0} className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-primary-foreground placeholder:text-primary-foreground/70" value={newPitchEquity} onChange={(e) => setNewPitchEquity(e.target.value)} />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleUploadPitch}>Carica Pitch</Button>
+                  <Button onClick={handleUploadPitch} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Carica Pitch</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-4">
-            <h3 className="text-lg font-semibold">I Tuoi Pitch Pubblicati</h3>
+            <h3 className="text-lg font-semibold text-primary-foreground">I Tuoi Pitch Pubblicati</h3>
             {startupPitches.filter(pitch => pitch.user_id === currentUserId).length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
                 {startupPitches.filter(pitch => pitch.user_id === currentUserId).map((pitch) => (
-                  <Card key={pitch.id} className="bg-white/50 border-white/40">
+                  <Card key={pitch.id} className="bg-white/20 backdrop-blur-md border-white/30 text-primary-foreground">
                     <CardHeader>
-                      <CardTitle>{pitch.name}</CardTitle>
-                      <CardDescription>{pitch.sector}</CardDescription>
+                      <CardTitle className="text-primary-foreground">{pitch.name}</CardTitle>
+                      <CardDescription className="text-primary-foreground/80">{pitch.sector}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <p className="text-sm text-muted-foreground">{pitch.description}</p>
+                      <p className="text-sm text-primary-foreground/80">{pitch.description}</p>
                       <p className="font-medium">Capitale Richiesto: €{pitch.capital.toLocaleString()}</p>
                       <p className="text-sm">Quote Offerte: {pitch.equity}%</p>
                       <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${pitch.status === 'In Trattativa' ? 'bg-yellow-100 text-yellow-800' : pitch.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
@@ -238,7 +260,7 @@ const InvestmentFloorPage = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground">Nessun pitch caricato. Clicca '+' per caricarne uno!</p>
+              <p className="text-center text-primary-foreground/80">Nessun pitch caricato. Clicca 'Carica Pitch' per presentare la tua startup!</p>
             )}
           </CardContent>
         </Card>
@@ -246,40 +268,53 @@ const InvestmentFloorPage = () => {
 
       {role === "Investitore" && (
         <>
-          <h3 className="text-2xl font-semibold text-center mt-12 text-primary">Startup in Cerca di Investimenti</h3>
+          <h3 className="text-2xl font-semibold text-center mt-12 text-primary-foreground">Startup in Cerca di Investimenti</h3>
+          <p className="text-center text-primary-foreground/80 mb-6">Scopri le prossime grandi idee e le opportunità di investimento.</p>
           <div className="max-w-2xl mx-auto mb-6 flex gap-4">
-            <Input placeholder="Filtra per ROI atteso" className="bg-white/50 backdrop-blur-sm border-white/30" />
-            <Input placeholder="Filtra per Settore" className="bg-white/50 backdrop-blur-sm border-white/30" />
-            <Button>Cerca</Button>
+            <Input placeholder="Filtra per ROI atteso" className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70" />
+            <Input placeholder="Filtra per Settore" className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70" />
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Cerca</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {startupPitches.map((pitch) => (
-              <Card key={pitch.id} className="bg-white/40 backdrop-blur-sm border border-white/30 shadow-md">
+              <Card key={pitch.id} className="bg-white/20 backdrop-blur-md border border-white/30 shadow-md text-primary-foreground">
                 <CardHeader>
-                  <CardTitle>{pitch.name}</CardTitle>
-                  <CardDescription>{pitch.sector}</CardDescription>
+                  <CardTitle className="text-primary-foreground">{pitch.name}</CardTitle>
+                  <CardDescription className="text-primary-foreground/80">{pitch.sector}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{pitch.description}</p>
-                  <p className="text-sm text-muted-foreground">ROI Atteso: {pitch.roi}</p>
+                  <p className="text-sm text-primary-foreground/80">{pitch.description}</p>
+                  <p className="text-sm text-primary-foreground/80">ROI Atteso: {pitch.roi}</p>
                   <p className="font-medium">Capitale Richiesto: €{pitch.capital.toLocaleString()}</p>
                   <p className="text-sm">Quote Offerte: {pitch.equity}%</p>
                   <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${pitch.status === 'In Trattativa' ? 'bg-yellow-100 text-yellow-800' : pitch.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                     Stato: {pitch.status}
                   </span>
-                  <Button
-                    className="w-full mt-4"
-                    onClick={() => handleSendLOI(pitch.id, pitch.name)}
-                    disabled={pitch.status !== 'Disponibile'}
-                  >
-                    {pitch.status === 'In Trattativa' ? 'In Trattativa' : 'Invia LOI'}
-                  </Button>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      className="flex-grow bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200"
+                      onClick={() => handleSendLOI(pitch.id, pitch.name)}
+                      disabled={pitch.status !== 'Disponibile'}
+                    >
+                      {pitch.status === 'In Trattativa' ? 'In Trattativa' : 'Invia LOI'}
+                    </Button>
+                    <Button variant="outline" onClick={() => openChatWithUser(pitch.user_id)} className="flex-grow bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                      <MessageSquare className="h-4 w-4 mr-2" /> Contatta Startup
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </>
       )}
+
+      <ChatDialog
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        chatPartner={chatPartnerName || "Utente Sconosciuto"}
+        chatPartnerId={chatPartnerId || ""}
+      />
     </div>
   );
 };

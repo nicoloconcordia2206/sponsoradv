@@ -11,8 +11,8 @@ import { showError } from "@/utils/toast";
 
 interface Message {
   id: string;
-  sender_id: string; // Changed from sender to sender_id
-  receiver_id: string; // New field for receiver
+  sender_id: string;
+  receiver_id: string;
   text: string;
   timestamp: string;
   read: boolean;
@@ -21,22 +21,17 @@ interface Message {
 interface ChatDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  chatPartner: string; // This will be the display name, not the ID
-  // In a real application, you would pass the actual chatPartnerId here:
-  // chatPartnerId: string;
+  chatPartner: string; // Display name
+  chatPartnerId: string; // Actual user ID of the chat partner
 }
 
-const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner }) => {
+const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, chatPartnerId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  // For simplicity and demonstration, we'll assume a fixed chat partner ID for "Supporto ConnectHub".
-  // In a real app, this `chatPartnerId` would be passed as a prop or fetched dynamically
-  // based on the selected chat. For example, if chatting with another user, this would be their user_id.
-  const simulatedChatPartnerId = "simulated_support_id_789"; 
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -51,14 +46,14 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
   };
 
   useEffect(() => {
-    if (!isOpen || !currentUserId) return;
+    if (!isOpen || !currentUserId || !chatPartnerId) return;
 
     const fetchMessages = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${simulatedChatPartnerId}),and(sender_id.eq.${simulatedChatPartnerId},receiver_id.eq.${currentUserId})`) // Fetch messages relevant to this specific chat
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${chatPartnerId}),and(sender_id.eq.${chatPartnerId},receiver_id.eq.${currentUserId})`) // Fetch messages relevant to this specific chat
         .order('timestamp', { ascending: true });
 
       if (error) {
@@ -74,15 +69,15 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
 
     // Set up real-time subscription for new messages
     const channel = supabase
-      .channel('chat_room')
+      .channel(`chat_room_${currentUserId}_${chatPartnerId}`) // Unique channel for this chat pair
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           const newMsg = payload.new as Message;
           // Only add if it's relevant to this chat (either sent by current user or to current user from this partner)
-          if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === simulatedChatPartnerId) ||
-              (newMsg.sender_id === simulatedChatPartnerId && newMsg.receiver_id === currentUserId)) {
+          if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === chatPartnerId) ||
+              (newMsg.sender_id === chatPartnerId && newMsg.receiver_id === currentUserId)) {
             setMessages((prev) => [...prev, newMsg]);
           }
         }
@@ -92,18 +87,18 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isOpen, currentUserId, simulatedChatPartnerId]);
+  }, [isOpen, currentUserId, chatPartnerId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (newMessage.trim() === "" || !currentUserId) return;
+    if (newMessage.trim() === "" || !currentUserId || !chatPartnerId) return;
 
     const newMsg: Omit<Message, 'id'> = {
       sender_id: currentUserId,
-      receiver_id: simulatedChatPartnerId,
+      receiver_id: chatPartnerId,
       text: newMessage,
       timestamp: new Date().toISOString(), // Use ISO string for better sorting/storage
       read: false,
@@ -118,26 +113,28 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
       // The real-time subscription will add the message to the state, no need to manually add here.
     }
 
-    // Simulate a response from the chat partner (this would be handled by a backend/AI in a real app)
-    setTimeout(async () => {
-      const botResponse: Omit<Message, 'id'> = {
-        sender_id: simulatedChatPartnerId, // Bot is the sender
-        receiver_id: currentUserId, // Current user is the receiver
-        text: "Ho ricevuto il tuo messaggio!",
-        timestamp: new Date().toISOString(),
-        read: false,
-      };
-      const { error: botError } = await supabase.from('messages').insert([botResponse]);
-      if (botError) {
-        console.error("Error sending bot response:", botError); // Log detailed error for debugging
-      }
-    }, 1000);
+    // Simulate a response from the chat partner if it's the support chat
+    if (chatPartnerId === "simulated_support_id_789") {
+      setTimeout(async () => {
+        const botResponse: Omit<Message, 'id'> = {
+          sender_id: chatPartnerId, // Bot is the sender
+          receiver_id: currentUserId, // Current user is the receiver
+          text: "Ho ricevuto il tuo messaggio! Un operatore ti risponderà a breve.",
+          timestamp: new Date().toISOString(),
+          read: false,
+        };
+        const { error: botError } = await supabase.from('messages').insert([botResponse]);
+        if (botError) {
+          console.error("Error sending bot response:", botError); // Log detailed error for debugging
+        }
+      }, 1000);
+    }
   };
 
   if (loading && isOpen) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh]">
+        <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
           <div className="flex-grow flex items-center justify-center text-muted-foreground">Caricamento messaggi...</div>
         </DialogContent>
       </Dialog>
@@ -146,14 +143,14 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh]">
+      <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
         <DialogHeader>
-          <DialogTitle>Chat con {chatPartner}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-primary">Chat con {chatPartner}</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Invia messaggi al tuo partner di collaborazione.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow p-4 border rounded-md bg-gray-50 dark:bg-gray-800 mb-4">
+        <ScrollArea className="flex-grow p-4 border rounded-md bg-white/10 dark:bg-gray-800 mb-4 border-white/20">
           <div className="flex flex-col space-y-2">
             {messages.map((msg) => (
               <div
@@ -163,7 +160,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
                 <div
                   className={`max-w-[70%] p-2 rounded-lg ${
                     msg.sender_id === currentUserId
-                      ? "bg-blue-500 text-white"
+                      ? "bg-blue-600 text-white"
                       : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
                   }`}
                 >
@@ -186,9 +183,9 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner })
                 handleSendMessage();
               }
             }}
-            className="flex-grow"
+            className="flex-grow bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
           />
-          <Button onClick={handleSendMessage} disabled={newMessage.trim() === ""}>
+          <Button onClick={handleSendMessage} disabled={newMessage.trim() === ""} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">
             <Send className="h-4 w-4" />
           </Button>
         </div>

@@ -98,4 +98,9 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Custom gradient for pages */
+  .bg-gradient-to-br {
+    background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
+  }
 }
