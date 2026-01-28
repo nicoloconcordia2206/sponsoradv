@@ -161,7 +161,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                   className={`max-w-[70%] p-2 rounded-lg ${
                     msg.sender_id === currentUserId
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                      : "bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100" // Improved contrast
                   }`}
                 >
                   <p className="text-xs font-semibold mb-1">{msg.sender_id === currentUserId ? "Tu" : chatPartner}</p>

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle, MessageSquare } from "lucide-react"; // Import MessageSquare icon
+import { PlusCircle, MessageSquare, Trash2 } from "lucide-react"; // Import Trash2 icon
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
@@ -142,6 +142,36 @@ const CreatorHubPage = () => {
       setNewBriefBudget("");
       setNewBriefDeadline("");
       setIsBriefDialogOpen(false);
+    }
+  };
+
+  const handleDeleteBrief = async (briefId: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per eliminare un brief.");
+      return;
+    }
+
+    // Optional: Add a confirmation dialog here before deleting
+    if (!window.confirm("Sei sicuro di voler eliminare questo brief video? Tutte le proposte associate verranno eliminate.")) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('campaigns')
+      .delete()
+      .eq('id', briefId)
+      .eq('user_id', currentUserId); // Ensure only the owner can delete
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleDeleteBrief):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per eliminare questo brief.");
+      } else {
+        showError("Errore durante l'eliminazione del brief.");
+      }
+    } else {
+      setJobBriefs((prev) => prev.filter((brief) => brief.id !== briefId));
+      showSuccess("Brief video eliminato con successo!");
     }
   };
 
@@ -308,9 +338,14 @@ const CreatorHubPage = () => {
               <div className="grid grid-cols-1 gap-4">
                 {jobBriefs.filter(job => job.user_id === currentUserId).map((job) => (
                   <Card key={job.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
-                    <CardHeader>
-                      <CardTitle className="text-primary-foreground">{job.title}</CardTitle>
-                      <CardDescription className="text-primary-foreground/80">Budget: €{job.budget} | Scadenza: {job.deadline}</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle className="text-primary-foreground">{job.title}</CardTitle>
+                        <CardDescription className="text-primary-foreground/80">Budget: €{job.budget} | Scadenza: {job.deadline}</CardDescription>
+                      </div>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteBrief(job.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-primary-foreground/80">{job.description}</p>
