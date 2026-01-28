@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle, MessageSquare } from "lucide-react"; // Import MessageSquare icon
+import { PlusCircle, MessageSquare, Trash2 } from "lucide-react"; // Import MessageSquare and Trash2 icons
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
@@ -124,6 +124,35 @@ const InvestmentFloorPage = () => {
       setNewPitchCapital("");
       setNewPitchEquity("");
       setIsPitchDialogOpen(false);
+    }
+  };
+
+  const handleDeleteStartupPitch = async (pitchId: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per eliminare un pitch.");
+      return;
+    }
+
+    if (!window.confirm("Sei sicuro di voler eliminare questo pitch di startup?")) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('investments')
+      .delete()
+      .eq('id', pitchId)
+      .eq('user_id', currentUserId); // Ensure only the owner can delete
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleDeleteStartupPitch):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per eliminare questo pitch.");
+      } else {
+        showError("Errore durante l'eliminazione del pitch.");
+      }
+    } else {
+      setStartupPitches((prev) => prev.filter((pitch) => pitch.id !== pitchId));
+      showSuccess("Pitch di startup eliminato con successo!");
     }
   };
 
@@ -244,9 +273,14 @@ const InvestmentFloorPage = () => {
               <div className="grid grid-cols-1 gap-4">
                 {startupPitches.filter(pitch => pitch.user_id === currentUserId).map((pitch) => (
                   <Card key={pitch.id} className="bg-white/20 backdrop-blur-md border-white/30 text-primary-foreground">
-                    <CardHeader>
-                      <CardTitle className="text-primary-foreground">{pitch.name}</CardTitle>
-                      <CardDescription className="text-primary-foreground/80">{pitch.sector}</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle className="text-primary-foreground">{pitch.name}</CardTitle>
+                        <CardDescription className="text-primary-foreground/80">{pitch.sector}</CardDescription>
+                      </div>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteStartupPitch(pitch.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <p className="text-sm text-primary-foreground/80">{pitch.description}</p>

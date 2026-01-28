@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress"; // Import Progress component
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle, MessageSquare } from "lucide-react"; // Import MessageSquare icon
+import { PlusCircle, MessageSquare, Trash2 } from "lucide-react"; // Import MessageSquare and Trash2 icons
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
@@ -137,6 +137,35 @@ const SocialImpactPage = () => {
       setNewProjectCity("");
       setNewProjectZip("");
       setIsProjectDialogOpen(false);
+    }
+  };
+
+  const handleDeleteSponsorshipRequest = async (projectId: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per eliminare un progetto.");
+      return;
+    }
+
+    if (!window.confirm("Sei sicuro di voler eliminare questo progetto di sostegno?")) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('sponsorship_requests')
+      .delete()
+      .eq('id', projectId)
+      .eq('user_id', currentUserId); // Ensure only the owner can delete
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleDeleteSponsorshipRequest):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per eliminare questo progetto.");
+      } else {
+        showError("Errore durante l'eliminazione del progetto.");
+      }
+    } else {
+      setSponsorshipRequests((prev) => prev.filter((project) => project.id !== projectId));
+      showSuccess("Progetto di sostegno eliminato con successo!");
     }
   };
 
@@ -363,9 +392,14 @@ const SocialImpactPage = () => {
                   const progressValue = project.amount_funded && project.amount ? (project.amount_funded / project.amount) * 100 : 0;
                   return (
                     <Card key={project.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
-                      <CardHeader>
-                        <CardTitle className="text-primary-foreground">{project.title}</CardTitle>
-                        <CardDescription className="text-primary-foreground/80">{project.city}, {project.zip}</CardDescription>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                          <CardTitle className="text-primary-foreground">{project.title}</CardTitle>
+                          <CardDescription className="text-primary-foreground/80">{project.city}, {project.zip}</CardDescription>
+                        </div>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteSponsorshipRequest(project.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-primary-foreground/80">{project.description}</p>
