@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } => "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import { showError } from "@/utils/toast";
 
@@ -186,7 +186,13 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                       : "bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100" // Improved contrast
                   }`}
                 >
-                  <p className="text-xs font-semibold mb-1">{msg.sender_id === currentUserId ? "Tu" : chatPartner}</p>
+                  <p className="text-xs font-semibold mb-1">
+                    {msg.sender_id === currentUserId
+                      ? "Tu"
+                      : msg.sender_id === "simulated_support_id_789"
+                        ? "AI"
+                        : chatPartner}
+                  </p>
                   <p className="text-sm">{msg.text}</p>
                   <p className="text-xs text-right mt-1 opacity-75">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
