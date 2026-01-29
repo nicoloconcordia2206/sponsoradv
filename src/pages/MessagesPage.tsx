@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquareText, Send, Trash2 } from "lucide-react"; // Import Trash2 icon
 import ChatDialog from "@/components/ChatDialog";
-import { supabase, SUPPORT_USER_ID } from "@/lib/supabaseClient"; // Import SUPPORT_USER_ID
+import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 
 interface Conversation {
@@ -64,8 +64,8 @@ const MessagesPage = () => {
       const conversationMap = new Map<string, Conversation>();
 
       // Add the simulated support chat as a base
-      conversationMap.set(SUPPORT_USER_ID, { // Use SUPPORT_USER_ID here
-        partnerId: SUPPORT_USER_ID,
+      conversationMap.set("simulated_support_id_789", {
+        partnerId: "simulated_support_id_789",
         partnerName: "Supporto ConnectHub",
         lastMessage: "Nessun messaggio recente.",
         lastMessageTime: "",
@@ -79,7 +79,7 @@ const MessagesPage = () => {
         if (!conversationMap.has(partnerId)) {
           // Fetch partner name if not already in map (and not support chat)
           let partnerName = "Utente Sconosciuto";
-          if (partnerId !== SUPPORT_USER_ID) { // Use SUPPORT_USER_ID here
+          if (partnerId !== "simulated_support_id_789") {
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .select('full_name, username')

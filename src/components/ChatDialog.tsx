@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { supabase, SUPPORT_USER_ID } from "@/lib/supabaseClient"; // Import SUPPORT_USER_ID
+import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import { showError } from "@/utils/toast";
 
 interface Message {
@@ -115,14 +115,13 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     if (error) {
       console.error("Error sending message:", error); // Log detailed error for debugging
       showError("Errore durante l'invio del messaggio."); // Generic error message
-      return; // Important to return here to prevent further execution if the first insert fails
     } else if (data && data.length > 0) {
       setMessages((prev) => [...prev, data[0] as Message]); // Aggiungi il messaggio inviato immediatamente
       setNewMessage("");
     }
 
     // Simulate a response from the chat partner if it's the support chat
-    if (chatPartnerId === SUPPORT_USER_ID) { // Use SUPPORT_USER_ID here
+    if (chatPartnerId === "simulated_support_id_789") {
       setTimeout(async () => {
         let botText = "Ho ricevuto il tuo messaggio! Un operatore ti risponderà a breve.";
         const lowerCaseMessage = newMessage.toLowerCase();
