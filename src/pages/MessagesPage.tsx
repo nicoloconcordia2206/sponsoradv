@@ -1,22 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquareText, Send } from "lucide-react";
+import { MessageSquareText, Send, Trash2 } from "lucide-react"; // Import Trash2 icon
 import ChatDialog from "@/components/ChatDialog";
 import { supabase } from "@/lib/supabaseClient";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 interface Conversation {
-  id: string;
   partnerId: string;
   partnerName: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
+}
+
+interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  text: string;
+  timestamp: string;
+  read: boolean;
 }
 
 const MessagesPage = () => {
@@ -35,65 +43,179 @@ const MessagesPage = () => {
     fetchUser();
   }, []);
 
-  useEffect(() => {
+  const fetchConversations = useCallback(async () => {
     if (!currentUserId) return;
+    setLoading(true);
+    try {
+      // Fetch all messages involving the current user
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+        .order('timestamp', { ascending: false }); // Order by latest message
 
-    const fetchConversations = async () => {
-      setLoading(true);
-      try {
-        // This is a simplified approach. In a real app, you'd query messages
-        // and group them by sender/receiver to form conversations.
-        // For now, we'll simulate some conversations.
-        const simulatedConversations: Conversation[] = [
-          {
-            id: "conv1",
-            partnerId: "simulated_support_id_789",
-            partnerName: "Supporto ConnectHub",
-            lastMessage: "Ciao! Come possiamo aiutarti oggi?",
-            lastMessageTime: "10:30",
-            unreadCount: 1,
-          },
-          {
-            id: "conv2",
-            partnerId: "influencer_id_123",
-            partnerName: "Influencer Alpha",
-            lastMessage: "Ho inviato la proposta per la campagna.",
-            lastMessageTime: "Ieri",
-            unreadCount: 0,
-          },
-          {
-            id: "conv3",
-            partnerId: "azienda_id_456",
-            partnerName: "Azienda Beta",
-            lastMessage: "Grazie per il tuo interesse nel nostro pitch!",
-            lastMessageTime: "2 giorni fa",
-            unreadCount: 0,
-          },
-          {
-            id: "conv4",
-            partnerId: "squadra_id_789",
-            partnerName: "Squadra Calcio Locale",
-            lastMessage: "Abbiamo ricevuto il tuo finanziamento, grazie!",
-            lastMessageTime: "3 giorni fa",
-            unreadCount: 2,
-          },
-        ];
-        setConversations(simulatedConversations);
-      } catch (error: any) {
-        console.error("Error fetching conversations:", error.message);
-        showError("Errore nel caricamento delle conversazioni.");
-      } finally {
+      if (messagesError) {
+        console.error("Error fetching messages for conversations:", messagesError);
+        showError("Errore nel caricamento dei messaggi per le conversazioni.");
         setLoading(false);
+        return;
       }
-    };
 
-    fetchConversations();
+      const conversationMap = new Map<string, Conversation>();
+
+      // Add the simulated support chat as a base
+      conversationMap.set("simulated_support_id_789", {
+        partnerId: "simulated_support_id_789",
+        partnerName: "Supporto ConnectHub",
+        lastMessage: "Nessun messaggio recente.",
+        lastMessageTime: "",
+        unreadCount: 0,
+      });
+
+      // Process messages to build conversations
+      for (const msg of messagesData || []) {
+        const partnerId = msg.sender_id === currentUserId ? msg.receiver_id : msg.sender_id;
+
+        if (!conversationMap.has(partnerId)) {
+          // Fetch partner name if not already in map (and not support chat)
+          let partnerName = "Utente Sconosciuto";
+          if (partnerId !== "simulated_support_id_789") {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('full_name, username')
+              .eq('id', partnerId)
+              .single();
+
+            if (profileError && profileError.code !== 'PGRST116') {
+              console.error("Error fetching profile for chat partner:", profileError);
+            } else if (profileData) {
+              partnerName = profileData.full_name || profileData.username || "Utente Sconosciuto";
+            }
+          } else {
+            partnerName = "Supporto ConnectHub";
+          }
+
+          conversationMap.set(partnerId, {
+            partnerId: partnerId,
+            partnerName: partnerName,
+            lastMessage: msg.text,
+            lastMessageTime: new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            unreadCount: 0, // Will be updated below
+          });
+        }
+
+        // Update last message and time if this message is newer
+        const existingConv = conversationMap.get(partnerId)!;
+        if (new Date(msg.timestamp) > new Date(new Date().setHours(0,0,0,0))) { // If message is from today
+          existingConv.lastMessageTime = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else {
+          existingConv.lastMessageTime = new Date(msg.timestamp).toLocaleDateString();
+        }
+        existingConv.lastMessage = msg.text;
+
+
+        // Increment unread count if the message is from the partner and not read by the current user
+        if (msg.receiver_id === currentUserId && !msg.read) {
+          existingConv.unreadCount++;
+        }
+      }
+
+      // Convert map to array and sort by last message time
+      const sortedConversations = Array.from(conversationMap.values()).sort((a, b) => {
+        const timeA = a.lastMessageTime.includes(':') ? new Date().setHours(parseInt(a.lastMessageTime.split(':')[0]), parseInt(a.lastMessageTime.split(':')[1]), 0, 0) : new Date(a.lastMessageTime).getTime();
+        const timeB = b.lastMessageTime.includes(':') ? new Date().setHours(parseInt(b.lastMessageTime.split(':')[0]), parseInt(b.lastMessageTime.split(':')[1]), 0, 0) : new Date(b.lastMessageTime).getTime();
+        return timeB - timeA;
+      });
+
+      setConversations(sortedConversations);
+    } catch (error: any) {
+      console.error("Error fetching conversations:", error.message);
+      showError("Errore nel caricamento delle conversazioni.");
+    } finally {
+      setLoading(false);
+    }
   }, [currentUserId]);
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchConversations();
+
+      // Set up real-time subscription for new messages to update conversation list
+      const channel = supabase
+        .channel(`messages_list_for_${currentUserId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${currentUserId}` },
+          (payload) => {
+            // When a new message is received by the current user, refetch conversations
+            fetchConversations();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [currentUserId, fetchConversations]);
 
   const handleOpenChat = (partnerId: string, partnerName: string) => {
     setSelectedChatPartnerId(partnerId);
     setSelectedChatPartnerName(partnerName);
     setIsChatOpen(true);
+    // Mark messages as read when opening chat
+    markMessagesAsRead(partnerId);
+  };
+
+  const markMessagesAsRead = async (partnerId: string) => {
+    if (!currentUserId) return;
+    const { error } = await supabase
+      .from('messages')
+      .update({ read: true })
+      .eq('sender_id', partnerId)
+      .eq('receiver_id', currentUserId)
+      .eq('read', false); // Only update unread messages
+
+    if (error) {
+      console.error("Error marking messages as read:", error);
+    } else {
+      // Optimistically update the unread count in the UI
+      setConversations(prev => prev.map(conv =>
+        conv.partnerId === partnerId ? { ...conv, unreadCount: 0 } : conv
+      ));
+    }
+  };
+
+  const handleDeleteConversation = async (partnerId: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per eliminare una chat.");
+      return;
+    }
+
+    if (!window.confirm("Sei sicuro di voler eliminare questa conversazione? Questa azione è irreversibile.")) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${currentUserId})`);
+
+      if (error) {
+        console.error("Error deleting conversation:", error);
+        showError("Errore durante l'eliminazione della conversazione.");
+      } else {
+        setConversations(prev => prev.filter(conv => conv.partnerId !== partnerId));
+        showSuccess("Conversazione eliminata con successo!");
+      }
+    } catch (error: any) {
+      console.error("Error deleting conversation:", error.message);
+      showError("Errore durante l'eliminazione della conversazione.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -120,7 +242,7 @@ const MessagesPage = () => {
               {conversations.length > 0 ? (
                 conversations.map((conv) => (
                   <div
-                    key={conv.id}
+                    key={conv.partnerId}
                     className="flex items-center justify-between p-4 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-200 cursor-pointer border border-white/20"
                     onClick={() => handleOpenChat(conv.partnerId, conv.partnerName)}
                   >
@@ -131,13 +253,24 @@ const MessagesPage = () => {
                         <p className="text-sm text-primary-foreground/80 truncate max-w-[200px]">{conv.lastMessage}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-2">
                       <p className="text-xs text-primary-foreground/70">{conv.lastMessageTime}</p>
                       {conv.unreadCount > 0 && (
-                        <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full mt-1">
+                        <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
                           {conv.unreadCount}
                         </span>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent opening chat when deleting
+                          handleDeleteConversation(conv.partnerId);
+                        }}
+                        className="text-red-400 hover:text-red-200"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -151,7 +284,10 @@ const MessagesPage = () => {
 
       <ChatDialog
         isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
+        onClose={() => {
+          setIsChatOpen(false);
+          fetchConversations(); // Re-fetch conversations to update unread counts after closing chat
+        }}
         chatPartner={selectedChatPartnerName || "Utente Sconosciuto"}
         chatPartnerId={selectedChatPartnerId || ""}
       />
