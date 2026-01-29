@@ -49,9 +49,13 @@ const SocialImpactPage = () => {
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState<string | null>(null);
 
+  // New state for filters
+  const [cityFilter, setCityFilter] = useState("");
+  const [zipFilter, setZipFilter] = useState("");
+
   useEffect(() => {
     const fetchUserAndProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } = { user: null } } = await supabase.auth.getUser(); // Destructure with default to avoid error if user is null
       setCurrentUserId(user?.id || null);
       if (user) {
         const { data: profileData, error: profileError } = await supabase
@@ -209,6 +213,13 @@ const SocialImpactPage = () => {
   if (loading || roleLoading) {
     return <div className="text-center text-primary-foreground mt-20">Caricamento dati...</div>;
   }
+
+  // Filtering logic
+  const filteredSponsorshipRequests = sponsorshipRequests.filter(request => {
+    const matchesCity = cityFilter ? request.city.toLowerCase().includes(cityFilter.toLowerCase()) : true;
+    const matchesZip = zipFilter ? request.zip.includes(zipFilter) : true;
+    return matchesCity && matchesZip;
+  });
 
   const renderSponsorshipRequests = (requests: SponsorshipRequest[], showFundButton: boolean) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -431,11 +442,21 @@ const SocialImpactPage = () => {
           <h3 className="text-2xl font-semibold text-center mt-12 text-primary-foreground">Progetti di Sostegno Disponibili</h3>
           <p className="text-center text-primary-foreground/80 mb-6">Esplora le iniziative locali e contribuisci al loro successo.</p>
           <div className="max-w-2xl mx-auto mb-6 flex gap-4">
-            <Input placeholder="Filtra per Città" className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70" />
-            <Input placeholder="Filtra per CAP" className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70" />
+            <Input
+              placeholder="Filtra per Città"
+              className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
+              value={cityFilter}
+              onChange={(e) => setCityFilter(e.target.value)}
+            />
+            <Input
+              placeholder="Filtra per CAP"
+              className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
+              value={zipFilter}
+              onChange={(e) => setZipFilter(e.target.value)}
+            />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Cerca</Button>
           </div>
-          {renderSponsorshipRequests(sponsorshipRequests, role === "Investitore")}
+          {renderSponsorshipRequests(filteredSponsorshipRequests, role === "Investitore")}
         </>
       )}
 
