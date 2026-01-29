@@ -123,10 +123,25 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     // Simulate a response from the chat partner if it's the support chat
     if (chatPartnerId === "simulated_support_id_789") {
       setTimeout(async () => {
+        let botText = "Ho ricevuto il tuo messaggio! Un operatore ti risponderà a breve.";
+        const lowerCaseMessage = newMessage.toLowerCase();
+
+        if (lowerCaseMessage.includes("campagna") || lowerCaseMessage.includes("brief") || lowerCaseMessage.includes("creare")) {
+          botText = "Per creare o gestire le tue campagne video, visita la sezione 'Creator Hub'. Lì puoi pubblicare nuovi brief e gestire le proposte!";
+        } else if (lowerCaseMessage.includes("investimento") || lowerCaseMessage.includes("startup") || lowerCaseMessage.includes("finanziare")) {
+          botText = "Se sei interessato a investire o a caricare il pitch della tua startup, la sezione 'Investment Floor' è il posto giusto per te!";
+        } else if (lowerCaseMessage.includes("ruolo") || lowerCaseMessage.includes("profilo")) {
+          botText = "Puoi visualizzare e gestire il tuo ruolo e le informazioni del profilo nella sezione 'Profilo e Wallet'.";
+        } else if (lowerCaseMessage.includes("problema") || lowerCaseMessage.includes("aiuto") || lowerCaseMessage.includes("supporto")) {
+          botText = "Capisco che hai un problema. Ho inoltrato la tua richiesta al nostro team di supporto. Ti contatteranno il prima possibile.";
+        } else if (lowerCaseMessage.includes("social impact") || lowerCaseMessage.includes("progetto sociale")) {
+          botText = "Per scoprire o pubblicare progetti di sostegno e iniziative sociali, visita la sezione 'Social Impact'.";
+        }
+
         const botResponse: Omit<Message, 'id'> = {
           sender_id: chatPartnerId, // Bot is the sender
           receiver_id: currentUserId, // Current user is the receiver
-          text: "Ho ricevuto il tuo messaggio! Un operatore ti risponderà a breve.",
+          text: botText,
           timestamp: new Date().toISOString(),
           read: false,
         };
