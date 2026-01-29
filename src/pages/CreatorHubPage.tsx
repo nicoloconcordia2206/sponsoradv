@@ -245,12 +245,6 @@ const CreatorHubPage = () => {
     setIsChatOpen(true);
   };
 
-  const openChatWithSupport = () => {
-    setChatPartnerId("simulated_support_id_789"); // Use a fixed ID for support
-    setChatPartnerName("Supporto ConnectHub");
-    setIsChatOpen(true);
-  };
-
   if (loading || roleLoading) {
     return <div className="text-center text-primary-foreground mt-20">Caricamento dati...</div>;
   }
@@ -261,22 +255,6 @@ const CreatorHubPage = () => {
       <p className="text-center text-primary-foreground/80">
         Il marketplace dinamico dove influencer e aziende si incontrano per creare campagne video di successo.
       </p>
-
-      {/* Sezione Chat Integrata con Supporto */}
-      <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md text-primary-foreground">
-        <CardHeader>
-          <CardTitle className="text-primary-foreground">Supporto Chat</CardTitle>
-          <CardDescription className="text-primary-foreground/80">Accedi alle tue conversazioni con il supporto di ConnectHub.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" onClick={openChatWithSupport}>
-            <MessageSquare className="h-4 w-4 mr-2" /> Apri Chat con Supporto
-          </Button>
-          <p className="text-sm text-primary-foreground/70 mt-2">
-            (La funzionalità di chat con scambio di file protetti richiede un'implementazione backend avanzata.)
-          </p>
-        </CardContent>
-      </Card>
 
       {(role === "Azienda" || role === "Squadra") && (
         <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
