@@ -145,8 +145,8 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
         <DialogHeader>
-          <DialogTitle className="text-primary">Chat con {chatPartner}</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
+          <DialogTitle className="text-gray-900">Chat con {chatPartner}</DialogTitle>
+          <DialogDescription className="text-gray-600">
             Invia messaggi al tuo partner di collaborazione.
           </DialogDescription>
         </DialogHeader>
@@ -183,7 +183,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                 handleSendMessage();
               }
             }}
-            className="flex-grow bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
+            className="flex-grow bg-white/30 backdrop-blur-sm border-white/40 text-gray-900 placeholder:text-gray-500"
           />
           <Button onClick={handleSendMessage} disabled={newMessage.trim() === ""} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">
             <Send className="h-4 w-4" />
