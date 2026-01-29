@@ -35,7 +35,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } = { user: null } } = await supabase.auth.getUser(); // Destructure with default to avoid error if user is null
+      const { data: { user } = { user: null } } = await supabase.auth.getUser();
       setCurrentUserId(user?.id || null);
     };
     fetchUser();
@@ -76,11 +76,16 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
         (payload) => {
           const newMsg = payload.new as Message;
           // Only add if it's relevant to this chat (either sent by current user or to current user from this partner)
-          // And ensure it's not a message we just optimistically added (check if it's already in state by ID or text/timestamp)
-          if (((newMsg.sender_id === currentUserId && newMsg.receiver_id === chatPartnerId) ||
-              (newMsg.sender_id === chatPartnerId && newMsg.receiver_id === currentUserId)) &&
-              !messages.some(msg => msg.id === newMsg.id)) { // Prevent duplicates if optimistic update already added it
-            setMessages((prev) => [...prev, newMsg]);
+          // Use functional update to avoid 'messages' in dependency array
+          if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === chatPartnerId) ||
+              (newMsg.sender_id === chatPartnerId && newMsg.receiver_id === currentUserId)) {
+            setMessages((prevMessages) => {
+              // Prevent duplicates if optimistic update already added it
+              if (!prevMessages.some(msg => msg.id === newMsg.id)) {
+                return [...prevMessages, newMsg];
+              }
+              return prevMessages;
+            });
           }
         }
       )
@@ -89,7 +94,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isOpen, currentUserId, chatPartnerId, messages]); // Added 'messages' to dependencies to ensure `some` check works with latest state
+  }, [isOpen, currentUserId, chatPartnerId]); // Removed 'messages' from dependency array
 
   useEffect(() => {
     scrollToBottom();
