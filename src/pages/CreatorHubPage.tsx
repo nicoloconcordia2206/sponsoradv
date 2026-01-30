@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle, MessageSquare, Trash2 } from "lucide-react"; // Import Trash2 icon
+import { PlusCircle, MessageSquare, Trash2, CheckCircle2 } from "lucide-react"; // Import CheckCircle2 icon
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
@@ -249,6 +249,15 @@ const CreatorHubPage = () => {
     return <div className="text-center text-primary-foreground mt-20">Caricamento dati...</div>;
   }
 
+  const myActiveBriefs = jobBriefs.filter(job => job.user_id === currentUserId);
+  const myAcceptedProposalsAsCompany = proposals.filter(p => 
+    p.status === 'Accettata' && myActiveBriefs.some(brief => brief.id === p.job_brief_id)
+  );
+  const mySentProposals = proposals.filter(p => p.user_id === currentUserId);
+  const myAcceptedProposalsAsInfluencer = mySentProposals.filter(p => p.status === 'Accettata');
+  const myPendingOrRejectedProposalsAsInfluencer = mySentProposals.filter(p => p.status !== 'Accettata');
+
+
   return (
     <div className="space-y-8 p-4">
       <h2 className="text-3xl font-bold text-center text-primary-foreground">Creator Hub</h2>
@@ -257,128 +266,155 @@ const CreatorHubPage = () => {
       </p>
 
       {(role === "Azienda" || role === "Squadra") && (
-        <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-primary-foreground">I Tuoi Brief Video</CardTitle>
-              <CardDescription className="text-primary-foreground/80">Gestisci le tue campagne e le proposte ricevute.</CardDescription>
-            </div>
-            <Dialog open={isBriefDialogOpen} onOpenChange={setIsBriefDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all duration-200">
-                  <PlusCircle className="h-4 w-4" /> Crea Brief Video
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
-                <DialogHeader>
-                  <DialogTitle className="text-primary">Crea un Nuovo Brief Video</DialogTitle>
-                  <DialogDescription className="text-muted-foreground">
-                    Compila i dettagli per la tua prossima campagna video.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-title" className="text-right text-foreground">
-                      Titolo
-                    </Label>
-                    <Input
-                      id="brief-title"
-                      placeholder="Nome della campagna video"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newBriefTitle}
-                      onChange={(e) => setNewBriefTitle(e.target.value)}
-                    />
+        <>
+          <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-primary-foreground">I Tuoi Brief Video</CardTitle>
+                <CardDescription className="text-primary-foreground/80">Gestisci le tue campagne e le proposte ricevute.</CardDescription>
+              </div>
+              <Dialog open={isBriefDialogOpen} onOpenChange={setIsBriefDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all duration-200">
+                    <PlusCircle className="h-4 w-4" /> Crea Brief Video
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
+                  <DialogHeader>
+                    <DialogTitle className="text-primary">Crea un Nuovo Brief Video</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                      Compila i dettagli per la tua prossima campagna video.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="brief-title" className="text-right text-foreground">
+                        Titolo
+                      </Label>
+                      <Input
+                        id="brief-title"
+                        placeholder="Nome della campagna video"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newBriefTitle}
+                        onChange={(e) => setNewBriefTitle(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="brief-description" className="text-right text-foreground">
+                        Descrizione
+                      </Label>
+                      <Textarea
+                        id="brief-description"
+                        placeholder="Dettagli sul contenuto, target, ecc."
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newBriefDescription}
+                        onChange={(e) => setNewBriefDescription(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="brief-budget" className="text-right text-foreground">
+                        Budget (€)
+                      </Label>
+                      <Input
+                        id="brief-budget"
+                        type="number"
+                        placeholder="Es. 1000"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newBriefBudget}
+                        onChange={(e) => setNewBriefBudget(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="brief-deadline" className="text-right text-foreground">
+                        Scadenza
+                      </Label>
+                      <Input
+                        id="brief-deadline"
+                        type="date"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newBriefDeadline}
+                        onChange={(e) => setNewBriefDeadline(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-description" className="text-right text-foreground">
-                      Descrizione
-                    </Label>
-                    <Textarea
-                      id="brief-description"
-                      placeholder="Dettagli sul contenuto, target, ecc."
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newBriefDescription}
-                      onChange={(e) => setNewBriefDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-budget" className="text-right text-foreground">
-                      Budget (€)
-                    </Label>
-                    <Input
-                      id="brief-budget"
-                      type="number"
-                      placeholder="Es. 1000"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newBriefBudget}
-                      onChange={(e) => setNewBriefBudget(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="brief-deadline" className="text-right text-foreground">
-                      Scadenza
-                    </Label>
-                    <Input
-                      id="brief-deadline"
-                      type="date"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newBriefDeadline}
-                      onChange={(e) => setNewBriefDeadline(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handlePublishBrief} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Pubblica Brief</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {jobBriefs.filter(job => job.user_id === currentUserId).length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {jobBriefs.filter(job => job.user_id === currentUserId).map((job) => (
-                  <Card key={job.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <div>
-                        <CardTitle className="text-primary-foreground">{job.title}</CardTitle>
-                        <CardDescription className="text-primary-foreground/80">Budget: €{job.budget} | Scadenza: {job.deadline}</CardDescription>
-                      </div>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteBrief(job.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-primary-foreground/80">{job.description}</p>
-                      <h4 className="font-semibold mt-4 text-primary-foreground">Proposte Ricevute:</h4>
-                      {proposals.filter(p => p.job_brief_id === job.id).length > 0 ? (
-                        <div className="space-y-2 mt-2">
-                          {proposals.filter(p => p.job_brief_id === job.id).map(p => (
-                            <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-md border border-white/20">
-                              <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></span>
-                              <span>Status: {p.status}</span>
-                              {p.status === 'Inviata' && (
+                  <DialogFooter>
+                    <Button onClick={handlePublishBrief} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Pubblica Brief</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {myActiveBriefs.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {myActiveBriefs.map((job) => (
+                    <Card key={job.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                          <CardTitle className="text-primary-foreground">{job.title}</CardTitle>
+                          <CardDescription className="text-primary-foreground/80">Budget: €{job.budget} | Scadenza: {job.deadline}</CardDescription>
+                        </div>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteBrief(job.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-primary-foreground/80">{job.description}</p>
+                        <h4 className="font-semibold mt-4 text-primary-foreground">Proposte Ricevute:</h4>
+                        {proposals.filter(p => p.job_brief_id === job.id && p.status === 'Inviata').length > 0 ? (
+                          <div className="space-y-2 mt-2">
+                            {proposals.filter(p => p.job_brief_id === job.id && p.status === 'Inviata').map(p => (
+                              <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-md border border-white/20">
+                                <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></span>
+                                <span>Status: {p.status}</span>
                                 <div className="flex gap-2">
                                   <Button size="sm" onClick={() => handleAcceptProposal(p.id)} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">Accetta</Button>
                                   <Button size="sm" variant="outline" onClick={() => openChatWithUser(p.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
                                     <MessageSquare className="h-4 w-4 mr-2" /> Messaggio
                                   </Button>
                                 </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-primary-foreground/80 mt-2">Nessuna proposta ricevuta per questo brief.</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-primary-foreground/80 mt-2">Nessuna proposta ricevuta per questo brief.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-primary-foreground/80">Nessun brief video pubblicato. Clicca 'Crea Brief Video' per iniziare una nuova campagna!</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {myAcceptedProposalsAsCompany.length > 0 && (
+            <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md mt-8">
+              <CardHeader>
+                <CardTitle className="text-primary-foreground">Contratti Attivi (Proposte Accettate)</CardTitle>
+                <CardDescription className="text-primary-foreground/80">Queste proposte sono state accettate e sono in fase di esecuzione.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {myAcceptedProposalsAsCompany.map(p => (
+                  <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-3 rounded-md border border-white/20">
+                    <div>
+                      <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
+                      <p className="text-xs text-primary-foreground/80">Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Accettata
+                      </span>
+                      <Button size="sm" variant="outline" onClick={() => openChatWithUser(p.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </div>
-            ) : (
-              <p className="text-center text-primary-foreground/80">Nessun brief video pubblicato. Clicca 'Crea Brief Video' per iniziare una nuova campagna!</p>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {(role === "Azienda" || role === "Squadra" || role === "Influencer") && (
@@ -443,8 +479,8 @@ const CreatorHubPage = () => {
               <h3 className="text-2xl font-semibold text-center mt-12 text-primary-foreground">Le Tue Proposte Inviate</h3>
               <p className="text-center text-primary-foreground/80 mb-6">Tieni traccia dello stato delle tue candidature.</p>
               <div className="max-w-2xl mx-auto space-y-4">
-                {proposals.filter(p => p.user_id === currentUserId).length > 0 ? (
-                  proposals.filter(p => p.user_id === currentUserId).map(p => (
+                {myPendingOrRejectedProposalsAsInfluencer.length > 0 ? (
+                  myPendingOrRejectedProposalsAsInfluencer.map(p => (
                     <Card key={p.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
                       <CardContent className="flex items-center justify-between p-4">
                         <div>
@@ -469,6 +505,36 @@ const CreatorHubPage = () => {
                   <p className="text-center text-primary-foreground/80">Nessuna proposta inviata. Inizia a proporti per i job post disponibili!</p>
                 )}
               </div>
+
+              {myAcceptedProposalsAsInfluencer.length > 0 && (
+                <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md mt-8">
+                  <CardHeader>
+                    <CardTitle className="text-primary-foreground">Contratti Attivi (Proposte Accettate)</CardTitle>
+                    <CardDescription className="text-primary-foreground/80">Queste proposte sono state accettate e sono in fase di esecuzione.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {myAcceptedProposalsAsInfluencer.map(p => (
+                      <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-3 rounded-md border border-white/20">
+                        <div>
+                          <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
+                          <p className="text-xs text-primary-foreground/80">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Accettata
+                          </span>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            const jobBrief = jobBriefs.find(job => job.id === p.job_brief_id);
+                            if (jobBrief) openChatWithUser(jobBrief.user_id);
+                          }} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </>

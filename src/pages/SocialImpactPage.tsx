@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress"; // Import Progress component
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle, MessageSquare, Trash2 } from "lucide-react"; // Import MessageSquare and Trash2 icons
+import { PlusCircle, MessageSquare, Trash2, CheckCircle2 } from "lucide-react"; // Import MessageSquare, Trash2, CheckCircle2 icons
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
 
@@ -26,7 +26,8 @@ interface SponsorshipRequest {
   zip: string;
   organization: string;
   status: 'Attiva' | 'Finanziata';
-  user_id: string; // Link to the user who created it
+  user_id: string; // Link to the user who created it (Squadra)
+  funder_id: string | null; // New: Link to the user who funded it
 }
 
 const SocialImpactPage = () => {
@@ -106,7 +107,7 @@ const SocialImpactPage = () => {
       showError("Per favore, compila tutti i campi per il progetto e assicurati di essere loggato.");
       return;
     }
-    const newProject: Omit<SponsorshipRequest, 'id' | 'amount_funded'> = { // Exclude amount_funded from insert
+    const newProject: Omit<SponsorshipRequest, 'id' | 'amount_funded' | 'funder_id'> = { // Exclude amount_funded and funder_id from insert
       title: newProjectTitle,
       description: newProjectDescription,
       amount: Number(newProjectAmount), // Using 'amount'
@@ -174,9 +175,14 @@ const SocialImpactPage = () => {
   };
 
   const handleFundProject = async (projectId: string, fundingType: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per finanziare un progetto.");
+      return;
+    }
+
     const { error } = await supabase
       .from('sponsorship_requests')
-      .update({ status: 'Finanziata' })
+      .update({ status: 'Finanziata', funder_id: currentUserId }) // Set funder_id here
       .eq('id', projectId);
 
     if (error) {
@@ -188,7 +194,7 @@ const SocialImpactPage = () => {
       }
       return;
     } else {
-      setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata', amount_funded: p.amount } : p));
+      setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata', amount_funded: p.amount, funder_id: currentUserId } : p));
       showSuccess(`Progetto finanziato con ${fundingType}! Ricevuta per detrazione fiscale generata.`);
     }
   };
@@ -220,6 +226,11 @@ const SocialImpactPage = () => {
     const matchesZip = zipFilter ? request.zip.includes(zipFilter) : true;
     return matchesCity && matchesZip;
   });
+
+  const myPublishedSponsorshipRequests = sponsorshipRequests.filter(req => req.user_id === currentUserId);
+  const myFundedProjectsAsSquadra = myPublishedSponsorshipRequests.filter(req => req.status === 'Finanziata');
+  const myFundedProjectsAsFunder = sponsorshipRequests.filter(req => req.funder_id === currentUserId && req.status === 'Finanziata');
+
 
   const renderSponsorshipRequests = (requests: SponsorshipRequest[], showFundButton: boolean) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -296,145 +307,177 @@ const SocialImpactPage = () => {
       </p>
 
       {role === "Squadra" && (
-        <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-primary-foreground">I Tuoi Progetti di Sostegno</CardTitle>
-              <CardDescription className="text-primary-foreground/80">Gestisci le tue richieste di sponsorizzazione e monitora i progressi.</CardDescription>
-            </div>
-            <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all duration-200">
-                  <PlusCircle className="h-4 w-4" /> Carica Progetto
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
-                <DialogHeader>
-                  <DialogTitle className="text-primary">Carica un Nuovo Progetto di Sostegno</DialogTitle>
-                  <DialogDescription className="text-muted-foreground">
-                    Descrivi la tua iniziativa per trovare sponsor.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-title" className="text-right text-foreground">
-                      Titolo Progetto
-                    </Label>
-                    <Input
-                      id="project-title"
-                      placeholder="Es. Acquisto nuove divise per la squadra giovanile"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newProjectTitle}
-                      onChange={(e) => setNewProjectTitle(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-description" className="text-right text-foreground">
-                      Descrizione
-                    </Label>
-                    <Textarea
-                      id="project-description"
-                      placeholder="Dettagli sul progetto e l'impatto atteso sulla comunità."
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newProjectDescription}
-                      onChange={(e) => setNewProjectDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-amount" className="text-right text-foreground">
-                      Cifra Necessaria (€)
-                    </Label>
-                    <Input
-                      id="project-amount"
-                      type="number"
-                      placeholder="Es. 5000"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newProjectAmount}
-                      onChange={(e) => setNewProjectAmount(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-purpose" className="text-right text-foreground">
-                      Scopo
-                    </Label>
-                    <Input
-                      id="project-purpose"
-                      placeholder="Es. Acquisto nuove divise"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newProjectPurpose}
-                      onChange={(e) => setNewProjectPurpose(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-city" className="text-right text-foreground">
-                      Città
-                    </Label>
-                    <Input
-                      id="project-city"
-                      placeholder="Es. Milano"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newProjectCity}
-                      onChange={(e) => setNewProjectCity(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="project-zip" className="text-right text-foreground">
-                      CAP
-                    </Label>
-                    <Input
-                      id="project-zip"
-                      placeholder="Es. 20100"
-                      className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
-                      value={newProjectZip}
-                      onChange={(e) => setNewProjectZip(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handlePublishProject} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Carica Progetto</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {sponsorshipRequests.filter(req => req.user_id === currentUserId).length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {sponsorshipRequests.filter(req => req.user_id === currentUserId).map((project) => {
-                  const progressValue = project.amount_funded && project.amount ? (project.amount_funded / project.amount) * 100 : 0;
-                  return (
-                    <Card key={project.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
-                      <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                          <CardTitle className="text-primary-foreground">{project.title}</CardTitle>
-                          <CardDescription className="text-primary-foreground/80">{project.city}, {project.zip}</CardDescription>
-                        </div>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteSponsorshipRequest(project.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-primary-foreground/80">{project.description}</p>
-                        <p className="font-medium">Cifra Necessaria: €{project.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        <p className="text-sm">Scopo: {project.purpose}</p>
-                        <div className="mt-2">
-                          <Progress value={progressValue} className="w-full h-2 bg-white/30" indicatorClassName="bg-green-500" />
-                          <p className="text-xs text-primary-foreground/70 mt-1">
-                            {project.amount_funded?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {project.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € raccolti ({progressValue.toFixed(0)}%)
-                          </p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${project.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                          {project.status}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+        <>
+          <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-primary-foreground">I Tuoi Progetti di Sostegno</CardTitle>
+                <CardDescription className="text-primary-foreground/80">Gestisci le tue richieste di sponsorizzazione e monitora i progressi.</CardDescription>
               </div>
-            ) : (
-              <p className="text-center text-primary-foreground/80">Nessun progetto di sostegno pubblicato. Clicca 'Carica Progetto' per iniziare!</p>
-            )}
-          </CardContent>
-        </Card>
+              <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90 transition-all duration-200">
+                    <PlusCircle className="h-4 w-4" /> Carica Progetto
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
+                  <DialogHeader>
+                    <DialogTitle className="text-primary">Carica un Nuovo Progetto di Sostegno</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                      Descrivi la tua iniziativa per trovare sponsor.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="project-title" className="text-right text-foreground">
+                        Titolo Progetto
+                      </Label>
+                      <Input
+                        id="project-title"
+                        placeholder="Es. Acquisto nuove divise per la squadra giovanile"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newProjectTitle}
+                        onChange={(e) => setNewProjectTitle(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="project-description" className="text-right text-foreground">
+                        Descrizione
+                      </Label>
+                      <Textarea
+                        id="project-description"
+                        placeholder="Dettagli sul progetto e l'impatto atteso sulla comunità."
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newProjectDescription}
+                        onChange={(e) => setNewProjectDescription(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="project-amount" className="text-right text-foreground">
+                        Cifra Necessaria (€)
+                      </Label>
+                      <Input
+                        id="project-amount"
+                        type="number"
+                        placeholder="Es. 5000"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newProjectAmount}
+                        onChange={(e) => setNewProjectAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="project-purpose" className="text-right text-foreground">
+                        Scopo
+                      </Label>
+                      <Input
+                        id="project-purpose"
+                        placeholder="Es. Acquisto nuove divise"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newProjectPurpose}
+                        onChange={(e) => setNewProjectPurpose(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="project-city" className="text-right text-foreground">
+                        Città
+                      </Label>
+                      <Input
+                        id="project-city"
+                        placeholder="Es. Milano"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newProjectCity}
+                        onChange={(e) => setNewProjectCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="project-zip" className="text-right text-foreground">
+                        CAP
+                      </Label>
+                      <Input
+                        id="project-zip"
+                        placeholder="Es. 20100"
+                        className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                        value={newProjectZip}
+                        onChange={(e) => setNewProjectZip(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handlePublishProject} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Carica Progetto</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary-foreground">Progetti di Sostegno Attivi</h3>
+              {myPublishedSponsorshipRequests.filter(req => req.status === 'Attiva').length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {myPublishedSponsorshipRequests.filter(req => req.status === 'Attiva').map((project) => {
+                    const progressValue = project.amount_funded && project.amount ? (project.amount_funded / project.amount) * 100 : 0;
+                    return (
+                      <Card key={project.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                          <div>
+                            <CardTitle className="text-primary-foreground">{project.title}</CardTitle>
+                            <CardDescription className="text-primary-foreground/80">{project.city}, {project.zip}</CardDescription>
+                          </div>
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteSponsorshipRequest(project.id)} className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-primary-foreground/80">{project.description}</p>
+                          <p className="font-medium">Cifra Necessaria: €{project.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p className="text-sm">Scopo: {project.purpose}</p>
+                          <div className="mt-2">
+                            <Progress value={progressValue} className="w-full h-2 bg-white/30" indicatorClassName="bg-green-500" />
+                            <p className="text-xs text-primary-foreground/70 mt-1">
+                              {project.amount_funded?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {project.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € raccolti ({progressValue.toFixed(0)}%)
+                            </p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm mt-2 inline-block ${project.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {project.status}
+                          </span>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-center text-primary-foreground/80">Nessun progetto di sostegno pubblicato. Clicca 'Carica Progetto' per iniziare!</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {myFundedProjectsAsSquadra.length > 0 && (
+            <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md mt-8">
+              <CardHeader>
+                <CardTitle className="text-primary-foreground">Progetti Finanziati</CardTitle>
+                <CardDescription className="text-primary-foreground/80">Questi sono i tuoi progetti che hanno ricevuto finanziamenti.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {myFundedProjectsAsSquadra.map(project => (
+                  <div key={project.id} className="flex items-center justify-between text-sm bg-white/10 p-3 rounded-md border border-white/20">
+                    <div>
+                      <p className="font-medium text-primary-foreground">{project.title}</p>
+                      <p className="text-xs text-primary-foreground/80">Cifra Necessaria: €{project.amount?.toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Finanziato
+                      </span>
+                      {project.funder_id && (
+                        <Button size="sm" variant="outline" onClick={() => openChatWithUser(project.funder_id!)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       {(role === "Investitore" || role === "Azienda" || role === "Influencer") && (
@@ -456,7 +499,34 @@ const SocialImpactPage = () => {
             />
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Cerca</Button>
           </div>
-          {renderSponsorshipRequests(filteredSponsorshipRequests, role === "Investitore")}
+          {renderSponsorshipRequests(filteredSponsorshipRequests.filter(req => req.status === 'Attiva'), role === "Investitore" || role === "Azienda" || role === "Influencer")}
+
+          {myFundedProjectsAsFunder.length > 0 && (
+            <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md mt-8">
+              <CardHeader>
+                <CardTitle className="text-primary-foreground">I Tuoi Progetti di Sostegno Finanziati</CardTitle>
+                <CardDescription className="text-primary-foreground/80">Questi sono i progetti a cui hai contribuito.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {myFundedProjectsAsFunder.map(project => (
+                  <div key={project.id} className="flex items-center justify-between text-sm bg-white/10 p-3 rounded-md border border-white/20">
+                    <div>
+                      <p className="font-medium text-primary-foreground">{project.title}</p>
+                      <p className="text-xs text-primary-foreground/80">Organizzazione: {project.organization}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Finanziato
+                      </span>
+                      <Button size="sm" variant="outline" onClick={() => openChatWithUser(project.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
