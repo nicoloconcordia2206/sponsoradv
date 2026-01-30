@@ -1,8 +1,8 @@
--- 1. Elimina il constraint esistente (sostituisci 'profiles_role_check' con il nome effettivo se diverso)
+-- 1. Elimina il constraint esistente
 ALTER TABLE public.profiles
 DROP CONSTRAINT profiles_role_check;
 
--- 2. Ricrea il constraint con i valori esatti che il tuo frontend invia
+-- 2. Ricrea il constraint con tutti i ruoli validi, incluso 'Investitore'
 ALTER TABLE public.profiles
 ADD CONSTRAINT profiles_role_check
 CHECK (role IN ('Azienda', 'Squadra', 'Influencer', 'Investitore'));
