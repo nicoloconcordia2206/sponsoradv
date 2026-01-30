@@ -5,8 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Corrected import
-import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/lib/supabaseClient";
 import { showError } from "@/utils/toast";
 
 interface Message {
@@ -24,6 +24,9 @@ interface ChatDialogProps {
   chatPartner: string; // Display name
   chatPartnerId: string; // Actual user ID of the chat partner
 }
+
+// Use a static valid UUID for the simulated support ID
+const SIMULATED_SUPPORT_ID = "00000000-0000-0000-0000-000000000001";
 
 const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, chatPartnerId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -121,7 +124,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     }
 
     // Simulate a response from the chat partner if it's the support chat
-    if (chatPartnerId === "simulated_support_id_789") {
+    if (chatPartnerId === SIMULATED_SUPPORT_ID) {
       setTimeout(async () => {
         let botText = "Ho ricevuto il tuo messaggio! Un operatore ti risponderà a breve.";
         const lowerCaseMessage = newMessage.toLowerCase();
@@ -189,7 +192,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                   <p className="text-xs font-semibold mb-1">
                     {msg.sender_id === currentUserId
                       ? "Tu"
-                      : msg.sender_id === "simulated_support_id_789"
+                      : msg.sender_id === SIMULATED_SUPPORT_ID
                         ? "AI"
                         : chatPartner}
                   </p>

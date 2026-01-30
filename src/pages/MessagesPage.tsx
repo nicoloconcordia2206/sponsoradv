@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquareText, Send, Trash2 } from "lucide-react"; // Import Trash2 icon
+import { MessageSquareText, Send, Trash2 } from "lucide-react";
 import ChatDialog from "@/components/ChatDialog";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
@@ -26,6 +26,9 @@ interface Message {
   timestamp: string;
   read: boolean;
 }
+
+// Use a static valid UUID for the simulated support ID
+const SIMULATED_SUPPORT_ID = "00000000-0000-0000-0000-000000000001";
 
 const MessagesPage = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -64,8 +67,8 @@ const MessagesPage = () => {
       const conversationMap = new Map<string, Conversation>();
 
       // Add the simulated support chat as a base
-      conversationMap.set("simulated_support_id_789", {
-        partnerId: "simulated_support_id_789",
+      conversationMap.set(SIMULATED_SUPPORT_ID, {
+        partnerId: SIMULATED_SUPPORT_ID,
         partnerName: "Supporto ConnectHub",
         lastMessage: "Nessun messaggio recente.",
         lastMessageTime: "",
@@ -79,7 +82,7 @@ const MessagesPage = () => {
         if (!conversationMap.has(partnerId)) {
           // Fetch partner name if not already in map (and not support chat)
           let partnerName = "Utente Sconosciuto";
-          if (partnerId !== "simulated_support_id_789") {
+          if (partnerId !== SIMULATED_SUPPORT_ID) {
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .select('full_name, username')

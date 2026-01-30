@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { showSuccess, showError } from "@/utils/toast";
 import ChatDialog from "@/components/ChatDialog";
-import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
-import { MessageSquare } from "lucide-react"; // Import MessageSquare icon
+import { supabase } from "@/lib/supabaseClient";
+import { MessageSquare } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -27,6 +27,9 @@ interface Notification {
   read: boolean;
   user_id: string; // Link to the user
 }
+
+// Use a static valid UUID for the simulated support ID
+const SIMULATED_SUPPORT_ID = "00000000-0000-0000-0000-000000000001";
 
 const UserProfileWalletPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -167,7 +170,7 @@ const UserProfileWalletPage = () => {
   };
 
   const openChatWithSupport = () => {
-    setChatPartnerId("simulated_support_id_789"); // Use a fixed ID for support
+    setChatPartnerId(SIMULATED_SUPPORT_ID); // Use a fixed ID for support
     setChatPartnerName("Supporto ConnectHub");
     setIsChatOpen(true);
   };
