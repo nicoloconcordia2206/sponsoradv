@@ -46,6 +46,12 @@ const InvestmentFloorPage = () => {
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState<string | null>(null);
 
+  // State for funding dialog
+  const [isFundStartupDialogOpen, setIsFundStartupDialogOpen] = useState(false);
+  const [selectedPitchToFund, setSelectedPitchToFund] = useState<StartupPitch | null>(null);
+  const [amountToInvest, setAmountToInvest] = useState<number | string>("");
+
+
   useEffect(() => {
     const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -184,6 +190,60 @@ const InvestmentFloorPage = () => {
       );
       showSuccess(`Lettera di Intenti (LOI) inviata per ${startupName}! Lo stato è ora 'In Trattativa'.`);
       // In a real app, this would trigger a notification for the company that owns the pitch.
+    }
+  };
+
+  const handleConfirmFundStartup = async () => {
+    if (!selectedPitchToFund || !currentUserId || !amountToInvest || Number(amountToInvest) <= 0) {
+      showError("Per favore, inserisci un importo valido per l'investimento.");
+      return;
+    }
+
+    const investAmount = Number(amountToInvest);
+    const requiredCapital = selectedPitchToFund.capital;
+
+    if (investAmount !== requiredCapital) {
+      showError(`L'investimento deve corrispondere al capitale richiesto di €${requiredCapital.toLocaleString()}.`);
+      return;
+    }
+
+    try {
+      // 1. Update investment status
+      const { error: updateError } = await supabase
+        .from('investments')
+        .update({ status: 'Finanziata' })
+        .eq('id', selectedPitchToFund.id)
+        .eq('investor_id', currentUserId); // Ensure only the assigned investor can finalize
+
+      if (updateError) throw updateError;
+
+      // 2. Record transaction for the investor (debit)
+      const { error: transactionError } = await supabase.from('transactions').insert({
+        user_id: currentUserId,
+        description: `Investimento in startup "${selectedPitchToFund.name}"`,
+        amount: investAmount,
+        type: 'debit',
+        date: new Date().toISOString().slice(0, 10),
+      });
+
+      if (transactionError) throw transactionError;
+
+      // Update local state
+      setStartupPitches(prev => prev.map(p =>
+        p.id === selectedPitchToFund.id ? { ...p, status: 'Finanziata' } : p
+      ));
+      showSuccess(`Hai finanziato la startup "${selectedPitchToFund.name}" con €${investAmount.toLocaleString()}!`);
+      setIsFundStartupDialogOpen(false);
+      setAmountToInvest("");
+      setSelectedPitchToFund(null);
+
+    } catch (error: any) {
+      console.error("ERRORE SUPABASE (handleConfirmFundStartup):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per finanziare questa startup.");
+      } else {
+        showError("Errore durante il finanziamento della startup.");
+      }
     }
   };
 
@@ -400,6 +460,19 @@ const InvestmentFloorPage = () => {
                       <span className={`px-3 py-1 rounded-full text-sm ${pitch.status === 'Finanziata' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} flex items-center gap-1`}>
                         {pitch.status === 'Finanziata' ? <CheckCircle2 className="h-3 w-3" /> : null} {pitch.status}
                       </span>
+                      {pitch.status === 'In Trattativa' && pitch.investor_id === currentUserId && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPitchToFund(pitch);
+                            setAmountToInvest(pitch.capital); // Pre-fill with required capital
+                            setIsFundStartupDialogOpen(true);
+                          }}
+                          className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200"
+                        >
+                          Finanzia
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={() => openChatWithUser(pitch.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
                         <MessageSquare className="h-4 w-4" />
                       </Button>
@@ -418,6 +491,44 @@ const InvestmentFloorPage = () => {
         chatPartner={chatPartnerName || "Utente Sconosciuto"}
         chatPartnerId={chatPartnerId || ""}
       />
+
+      {/* Fund Startup Dialog */}
+      <Dialog open={isFundStartupDialogOpen} onOpenChange={setIsFundStartupDialogOpen}>
+        <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Finanzia "{selectedPitchToFund?.name}"</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Conferma l'investimento per questa startup.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="invest-amount" className="text-right text-foreground">
+                Importo da Investire (€)
+              </Label>
+              <Input
+                id="invest-amount"
+                type="number"
+                placeholder="Es. 500000"
+                className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                value={amountToInvest}
+                onChange={(e) => setAmountToInvest(e.target.value)}
+                readOnly // Amount should match required capital
+              />
+            </div>
+            {selectedPitchToFund && (
+              <p className="text-sm text-muted-foreground text-center">
+                Capitale richiesto: €{selectedPitchToFund.capital.toLocaleString()}. Quote offerte: {selectedPitchToFund.equity}%.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={handleConfirmFundStartup} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" disabled={!amountToInvest || Number(amountToInvest) <= 0}>
+              Conferma Investimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

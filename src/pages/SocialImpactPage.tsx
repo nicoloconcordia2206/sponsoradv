@@ -54,6 +54,11 @@ const SocialImpactPage = () => {
   const [cityFilter, setCityFilter] = useState("");
   const [zipFilter, setZipFilter] = useState("");
 
+  // State for funding dialog
+  const [isFundDialogOpen, setIsFundDialogOpen] = useState(false);
+  const [selectedProjectToFund, setSelectedProjectToFund] = useState<SponsorshipRequest | null>(null);
+  const [amountToFund, setAmountToFund] = useState<number | string>("");
+
   useEffect(() => {
     const fetchUserAndProfile = async () => {
       const { data: { user } = { user: null } } = await supabase.auth.getUser(); // Destructure with default to avoid error if user is null
@@ -92,7 +97,7 @@ const SocialImpactPage = () => {
         // Simulate amount_funded for demonstration purposes
         const requestsWithFunded = data.map(req => ({
           ...req,
-          amount_funded: req.status === 'Finanziata' ? req.amount : Math.floor(Math.random() * req.amount * 0.8) // Funded up to 80% if not fully funded
+          amount_funded: req.amount_funded || 0 // Ensure amount_funded is a number, default to 0
         }));
         setSponsorshipRequests(requestsWithFunded as SponsorshipRequest[]);
       }
@@ -174,28 +179,66 @@ const SocialImpactPage = () => {
     }
   };
 
-  const handleFundProject = async (projectId: string, fundingType: string) => {
-    if (!currentUserId) {
-      showError("Devi essere loggato per finanziare un progetto.");
+  const handleConfirmFundProject = async () => {
+    if (!selectedProjectToFund || !currentUserId || !amountToFund || Number(amountToFund) <= 0) {
+      showError("Per favore, inserisci un importo valido per il finanziamento.");
       return;
     }
 
-    const { error } = await supabase
-      .from('sponsorship_requests')
-      .update({ status: 'Finanziata', funder_id: currentUserId }) // Set funder_id here
-      .eq('id', projectId);
+    const fundAmount = Number(amountToFund);
+    const currentFunded = selectedProjectToFund.amount_funded || 0;
+    const totalAmount = selectedProjectToFund.amount;
 
-    if (error) {
-      console.error("ERRORE SUPABASE (handleFundProject):", error);
+    if (currentFunded + fundAmount > totalAmount) {
+      showError(`Non puoi finanziare più del necessario. Mancano €${(totalAmount - currentFunded).toFixed(2)}.`);
+      return;
+    }
+
+    const newAmountFunded = currentFunded + fundAmount;
+    const newStatus = newAmountFunded >= totalAmount ? 'Finanziata' : 'Attiva';
+
+    try {
+      // 1. Update sponsorship_request
+      const { error: updateError } = await supabase
+        .from('sponsorship_requests')
+        .update({
+          amount_funded: newAmountFunded,
+          status: newStatus,
+          funder_id: newStatus === 'Finanziata' ? currentUserId : null // Set funder_id only if fully funded
+        })
+        .eq('id', selectedProjectToFund.id);
+
+      if (updateError) throw updateError;
+
+      // 2. Record transaction for the funder (debit)
+      const { error: transactionError } = await supabase.from('transactions').insert({
+        user_id: currentUserId,
+        description: `Finanziamento per progetto "${selectedProjectToFund.title}"`,
+        amount: fundAmount,
+        type: 'debit',
+        date: new Date().toISOString().slice(0, 10),
+      });
+
+      if (transactionError) throw transactionError;
+
+      // Update local state
+      setSponsorshipRequests(prev => prev.map(p =>
+        p.id === selectedProjectToFund.id
+          ? { ...p, amount_funded: newAmountFunded, status: newStatus, funder_id: newStatus === 'Finanziata' ? currentUserId : p.funder_id }
+          : p
+      ));
+      showSuccess(`Hai finanziato €${fundAmount.toFixed(2)} per "${selectedProjectToFund.title}"!`);
+      setIsFundDialogOpen(false);
+      setAmountToFund("");
+      setSelectedProjectToFund(null);
+
+    } catch (error: any) {
+      console.error("ERRORE SUPABASE (handleConfirmFundProject):", error);
       if (error.code === '403') {
         showError("Errore: Problema di Policy RLS. Non hai i permessi per finanziare progetti.");
       } else {
-        showError("Errore durante il finanziamento del progetto."); // Generic error message
+        showError("Errore durante il finanziamento del progetto.");
       }
-      return;
-    } else {
-      setSponsorshipRequests(prev => prev.map(p => p.id === projectId ? { ...p, status: 'Finanziata', amount_funded: p.amount, funder_id: currentUserId } : p));
-      showSuccess(`Progetto finanziato con ${fundingType}! Ricevuta per detrazione fiscale generata.`);
     }
   };
 
@@ -257,36 +300,17 @@ const SocialImpactPage = () => {
               </span>
               <div className="flex gap-2 mt-4">
                 {showFundButton && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button className="flex-grow bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" disabled={project.status === 'Finanziata'}>
-                        {project.status === 'Finanziata' ? 'Finanziato' : 'Finanzia'}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
-                      <DialogHeader>
-                        <DialogTitle className="text-primary">Finanzia "{project.title}"</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                          Scegli come desideri supportare questo progetto.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <Label className="text-foreground">Opzioni di Finanziamento</Label>
-                        <Select onValueChange={(value) => handleFundProject(project.id, value)}>
-                          <SelectTrigger className="bg-white/50 backdrop-blur-sm border-white/30 text-foreground">
-                            <SelectValue placeholder="Seleziona tipo di finanziamento" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white/80 backdrop-blur-md border-white/30">
-                            <SelectItem value="Finanziamento Totale">Finanziamento Totale</SelectItem>
-                            <SelectItem value="Quota Parziale">Quota Parziale</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={() => showSuccess("Azione di finanziamento simulata.")} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Conferma Finanziamento</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <Button
+                    className="flex-grow bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200"
+                    onClick={() => {
+                      setSelectedProjectToFund(project);
+                      setAmountToFund(project.amount - (project.amount_funded || 0)); // Pre-fill with remaining amount
+                      setIsFundDialogOpen(true);
+                    }}
+                    disabled={project.status === 'Finanziata'}
+                  >
+                    {project.status === 'Finanziata' ? 'Finanziato' : 'Finanzia'}
+                  </Button>
                 )}
                 <Button variant="outline" onClick={() => openChatWithUser(project.user_id)} className="flex-grow bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
                   <MessageSquare className="h-4 w-4 mr-2" /> Contatta Organizzazione
@@ -536,6 +560,45 @@ const SocialImpactPage = () => {
         chatPartner={chatPartnerName || "Utente Sconosciuto"}
         chatPartnerId={chatPartnerId || ""}
       />
+
+      {/* Funding Dialog */}
+      <Dialog open={isFundDialogOpen} onOpenChange={setIsFundDialogOpen}>
+        <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Finanzia "{selectedProjectToFund?.title}"</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Inserisci l'importo che desideri finanziare per questo progetto.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="fund-amount" className="text-right text-foreground">
+                Importo (€)
+              </Label>
+              <Input
+                id="fund-amount"
+                type="number"
+                placeholder="Es. 1000"
+                className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                value={amountToFund}
+                onChange={(e) => setAmountToFund(e.target.value)}
+                min={1}
+                max={selectedProjectToFund ? selectedProjectToFund.amount - (selectedProjectToFund.amount_funded || 0) : undefined}
+              />
+            </div>
+            {selectedProjectToFund && (
+              <p className="text-sm text-muted-foreground text-center">
+                Mancano ancora €{(selectedProjectToFund.amount - (selectedProjectToFund.amount_funded || 0)).toFixed(2)} per raggiungere l'obiettivo.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={handleConfirmFundProject} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" disabled={!amountToFund || Number(amountToFund) <= 0}>
+              Conferma Finanziamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
