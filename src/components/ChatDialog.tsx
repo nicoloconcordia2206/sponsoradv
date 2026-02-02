@@ -8,6 +8,7 @@ import { Send } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabaseClient";
 import { showError } from "@/utils/toast";
+import { SIMULATED_SUPPORT_ID } from "@/lib/constants"; // Import from constants
 
 interface Message {
   id: string;
@@ -24,9 +25,6 @@ interface ChatDialogProps {
   chatPartner: string; // Display name
   chatPartnerId: string; // Actual user ID of the chat partner
 }
-
-// Use a static valid UUID for the simulated support ID
-const SIMULATED_SUPPORT_ID = "00000000-0000-0000-0000-000000000001";
 
 const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, chatPartnerId }) => {
   const [messages, setMessages] = useState<Message[]>([]);

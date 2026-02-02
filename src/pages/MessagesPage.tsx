@@ -9,6 +9,7 @@ import { MessageSquareText, Send, Trash2 } from "lucide-react";
 import ChatDialog from "@/components/ChatDialog";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
+import { SIMULATED_SUPPORT_ID } from "@/lib/constants"; // Import from constants
 
 interface Conversation {
   partnerId: string;
@@ -26,9 +27,6 @@ interface Message {
   timestamp: string;
   read: boolean;
 }
-
-// Use a static valid UUID for the simulated support ID
-const SIMULATED_SUPPORT_ID = "00000000-0000-0000-0000-000000000001";
 
 const MessagesPage = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);

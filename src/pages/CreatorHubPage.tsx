@@ -9,18 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/utils/toast";
 import { useRole } from "@/lib/role-store";
-import { PlusCircle, MessageSquare, Trash2, CheckCircle2 } from "lucide-react"; // Import CheckCircle2 icon
+import { PlusCircle, MessageSquare, Trash2, CheckCircle2, Video, Code, FileText } from "lucide-react"; // Import new icons
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
+import { CONTRACT_TEMPLATE } from "@/lib/constants"; // Import contract template
 
 interface JobBrief {
   id: string;
   title: string;
   description: string;
   budget: number;
-  company: string; // This needs to be fetched from profiles.full_name or username
+  company: string;
   deadline: string;
-  user_id: string; // Link to the user who created it
+  user_id: string;
 }
 
 interface Proposal {
@@ -28,14 +29,19 @@ interface Proposal {
   job_brief_id: string; // Link to the job brief
   jobTitle: string;
   socialLink: string;
-  status: 'Inviata' | 'Accettata' | 'Rifiutata';
+  status: 'pending' | 'accepted' | 'waiting_video' | 'in_review' | 'revision_requested' | 'completed' | 'rejected'; // Updated status values
   user_id: string; // Link to the user who sent it
+  contract_terms: string | null; // New
+  video_url: string | null; // New
+  spark_code: string | null; // New
+  feedback_notes: string | null; // New
+  payment_status: 'unpaid' | 'escrow_funded' | 'released'; // New
 }
 
 const CreatorHubPage = () => {
   const { role, loading: roleLoading } = useRole();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [userProfileName, setUserProfileName] = useState<string | null>(null); // New state for user's profile name
+  const [userProfileName, setUserProfileName] = useState<string | null>(null);
 
   const [jobBriefs, setJobBriefs] = useState<JobBrief[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -55,6 +61,21 @@ const CreatorHubPage = () => {
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState<string | null>(null);
 
+  // Influencer flow states
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [selectedProposalForContract, setSelectedProposalForContract] = useState<Proposal | null>(null);
+  const [videoLink, setVideoLink] = useState("");
+  const [sparkCode, setSparkCode] = useState("");
+  const [isUploadVideoModalOpen, setIsUploadVideoModalOpen] = useState(false);
+  const [selectedProposalForUpload, setSelectedProposalForUpload] = useState<Proposal | null>(null);
+
+  // Azienda flow states
+  const [isReviewVideoModalOpen, setIsReviewVideoModalOpen] = useState(false);
+  const [selectedProposalForReview, setSelectedProposalForReview] = useState<Proposal | null>(null);
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+
+
   useEffect(() => {
     const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -62,13 +83,12 @@ const CreatorHubPage = () => {
       if (user) {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('full_name, username') // Try fetching both
+          .select('full_name, username')
           .eq('id', user.id)
           .single();
 
         if (profileError && profileError.code !== 'PGRST116') {
           console.error("Error fetching user profile name:", profileError);
-          // No showError here, as a missing name is handled by fallback text.
         } else if (profileData) {
           setUserProfileName(profileData.full_name || profileData.username || null);
         } else {
@@ -79,16 +99,15 @@ const CreatorHubPage = () => {
     fetchUserAndProfile();
   }, []);
 
-  // Fetch data from Supabase on component mount or when currentUserId changes
   useEffect(() => {
     if (!currentUserId || roleLoading) return;
 
     const fetchJobBriefs = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from('campaigns').select('*'); // Changed to 'campaigns'
+      const { data, error } = await supabase.from('campaigns').select('*');
       if (error) {
-        console.error("Error fetching job briefs:", error); // Log detailed error for debugging
-        showError("Errore nel caricamento dei brief video."); // Generic error message
+        console.error("Error fetching job briefs:", error);
+        showError("Errore nel caricamento dei brief video.");
       } else {
         setJobBriefs(data as JobBrief[]);
       }
@@ -98,8 +117,8 @@ const CreatorHubPage = () => {
     const fetchProposals = async () => {
       const { data, error } = await supabase.from('proposals').select('*');
       if (error) {
-        console.error("Error fetching proposals:", error); // Log detailed error for debugging
-        showError("Errore nel caricamento delle proposte."); // Generic error message
+        console.error("Error fetching proposals:", error);
+        showError("Errore nel caricamento delle proposte.");
       } else {
         setProposals(data as Proposal[]);
       }
@@ -119,11 +138,11 @@ const CreatorHubPage = () => {
       description: newBriefDescription,
       budget: Number(newBriefBudget),
       deadline: newBriefDeadline,
-      company: userProfileName || "Nome Azienda Sconosciuto", // Use fetched name or a fallback
+      company: userProfileName || "Nome Azienda Sconosciuto",
       user_id: currentUserId,
     };
 
-    const { data, error } = await supabase.from('campaigns').insert([newBrief]).select(); // Changed to 'campaigns'
+    const { data, error } = await supabase.from('campaigns').insert([newBrief]).select();
     if (error) {
       console.error("ERRORE SUPABASE (handlePublishBrief):", error);
       if (error.code === '403') {
@@ -131,7 +150,7 @@ const CreatorHubPage = () => {
       } else if (error.code === 'PGRST204') {
         showError(`Errore: Colonna mancante nel database. Stai cercando di scrivere: title, description, budget, deadline, company, user_id.`);
       } else {
-        showError("Errore durante la pubblicazione del brief."); // Generic error message
+        showError("Errore durante la pubblicazione del brief.");
       }
       return;
     } else if (data && data.length > 0) {
@@ -151,7 +170,6 @@ const CreatorHubPage = () => {
       return;
     }
 
-    // Optional: Add a confirmation dialog here before deleting
     if (!window.confirm("Sei sicuro di voler eliminare questo brief video? Tutte le proposte associate verranno eliminate.")) {
       return;
     }
@@ -160,7 +178,7 @@ const CreatorHubPage = () => {
       .from('campaigns')
       .delete()
       .eq('id', briefId)
-      .eq('user_id', currentUserId); // Ensure only the owner can delete
+      .eq('user_id', currentUserId);
 
     if (error) {
       console.error("ERRORE SUPABASE (handleDeleteBrief):", error);
@@ -180,11 +198,11 @@ const CreatorHubPage = () => {
       showError("Per favore, inserisci il link al tuo profilo social e assicurati di essere loggato.");
       return;
     }
-    const newProposal: Omit<Proposal, 'id'> = {
+    const newProposal: Omit<Proposal, 'id' | 'contract_terms' | 'video_url' | 'spark_code' | 'feedback_notes' | 'payment_status'> = {
       job_brief_id: currentJobForProposal.id,
       jobTitle: currentJobForProposal.title,
       socialLink: socialProfileLink,
-      status: 'Inviata',
+      status: 'pending', // Initial status
       user_id: currentUserId,
     };
 
@@ -196,7 +214,7 @@ const CreatorHubPage = () => {
       } else if (error.code === 'PGRST204') {
         showError(`Errore: Colonna mancante nel database. Stai cercando di scrivere: job_brief_id, jobTitle, socialLink, status, user_id.`);
       } else {
-        showError("Errore durante l'invio della proposta."); // Generic error message
+        showError("Errore durante l'invio della proposta.");
       }
       return;
     } else if (data && data.length > 0) {
@@ -208,23 +226,178 @@ const CreatorHubPage = () => {
     }
   };
 
-  const handleAcceptProposal = async (proposalId: string) => {
+  // Azienda: Accetta Proposta
+  const handleAcceptProposal = async (proposal: Proposal) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per accettare una proposta.");
+      return;
+    }
+
     const { error } = await supabase
       .from('proposals')
-      .update({ status: 'Accettata' })
-      .eq('id', proposalId);
+      .update({ status: 'accepted', contract_terms: CONTRACT_TEMPLATE }) // Set status to accepted and add contract terms
+      .eq('id', proposal.id);
 
     if (error) {
       console.error("ERRORE SUPABASE (handleAcceptProposal):", error);
       if (error.code === '403') {
         showError("Errore: Problema di Policy RLS. Non hai i permessi per accettare proposte.");
       } else {
-        showError("Errore durante l'accettazione della proposta."); // Generic error message
+        showError("Errore durante l'accettazione della proposta.");
       }
       return;
     } else {
-      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'Accettata' } : p));
-      showSuccess(`Proposta accettata! Contratto generato e sistema Escrow attivato.`);
+      setProposals(prev => prev.map(p => p.id === proposal.id ? { ...p, status: 'accepted', contract_terms: CONTRACT_TEMPLATE } : p));
+      showSuccess(`Proposta accettata! L'influencer può ora visualizzare il contratto.`);
+    }
+  };
+
+  // Influencer: Accetta Termini Contratto
+  const handleAcceptContractTerms = async (proposalId: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per accettare i termini.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('proposals')
+      .update({ status: 'waiting_video' }) // Change status to waiting_video
+      .eq('id', proposalId)
+      .eq('user_id', currentUserId); // Ensure only the influencer can accept
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleAcceptContractTerms):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per accettare i termini.");
+      } else {
+        showError("Errore durante l'accettazione dei termini del contratto.");
+      }
+    } else {
+      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'waiting_video' } : p));
+      showSuccess("Termini del contratto accettati! Ora puoi caricare il video.");
+      setIsContractModalOpen(false);
+      setSelectedProposalForContract(null);
+    }
+  };
+
+  // Influencer: Carica Video per Revisione
+  const handleUploadVideoForReview = async () => {
+    if (!selectedProposalForUpload || !videoLink || !sparkCode || !currentUserId) {
+      showError("Per favore, inserisci il link del video e il codice Spark Ads.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('proposals')
+      .update({
+        status: 'in_review', // Change status to in_review
+        video_url: videoLink,
+        spark_code: sparkCode,
+      })
+      .eq('id', selectedProposalForUpload.id)
+      .eq('user_id', currentUserId);
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleUploadVideoForReview):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per caricare il video.");
+      } else {
+        showError("Errore durante il caricamento del video per la revisione.");
+      }
+    } else {
+      setProposals(prev => prev.map(p => p.id === selectedProposalForUpload.id ? { ...p, status: 'in_review', video_url: videoLink, spark_code: sparkCode } : p));
+      showSuccess("Video inviato per la revisione con successo!");
+      setVideoLink("");
+      setSparkCode("");
+      setIsUploadVideoModalOpen(false);
+      setSelectedProposalForUpload(null);
+    }
+  };
+
+  // Azienda: Paga Deposito (simulato)
+  const handlePayEscrow = async (proposalId: string) => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per pagare il deposito.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('proposals')
+      .update({ payment_status: 'escrow_funded' })
+      .eq('id', proposalId); // Assuming company owns the campaign, not the proposal directly
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handlePayEscrow):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per pagare il deposito.");
+      } else {
+        showError("Errore durante il pagamento del deposito.");
+      }
+    } else {
+      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, payment_status: 'escrow_funded' } : p));
+      showSuccess("Deposito pagato con successo! I fondi sono in escrow.");
+    }
+  };
+
+  // Azienda: Approva e Pubblica Video
+  const handleApproveAndPublish = async () => {
+    if (!selectedProposalForReview || !currentUserId) {
+      showError("Devi essere loggato per approvare il video.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('proposals')
+      .update({
+        status: 'completed',
+        payment_status: 'released',
+      })
+      .eq('id', selectedProposalForReview.id);
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleApproveAndPublish):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per approvare il video.");
+      } else {
+        showError("Errore durante l'approvazione e pubblicazione del video.");
+      }
+    } else {
+      setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'completed', payment_status: 'released' } : p));
+      showSuccess("Video approvato e pubblicato! Fondi rilasciati e ricevuta generata.");
+      setIsReviewVideoModalOpen(false);
+      setSelectedProposalForReview(null);
+    }
+  };
+
+  // Azienda: Richiedi Modifica Video
+  const handleRequestRevision = async () => {
+    if (!selectedProposalForReview || !feedbackNotes.trim() || !currentUserId) {
+      showError("Per favore, inserisci le note di feedback per la modifica.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('proposals')
+      .update({
+        status: 'revision_requested',
+        feedback_notes: feedbackNotes.trim(),
+      })
+      .eq('id', selectedProposalForReview.id);
+
+    if (error) {
+      console.error("ERRORE SUPABASE (handleRequestRevision):", error);
+      if (error.code === '403') {
+        showError("Errore: Problema di Policy RLS. Non hai i permessi per richiedere modifiche.");
+      } else {
+        showError("Errore durante la richiesta di modifica.");
+      }
+    } else {
+      setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'revision_requested', feedback_notes: feedbackNotes.trim() } : p));
+      showSuccess("Richiesta di modifica inviata all'influencer.");
+      setIsFeedbackModalOpen(false);
+      setIsReviewVideoModalOpen(false);
+      setSelectedProposalForReview(null);
+      setFeedbackNotes("");
     }
   };
 
@@ -250,13 +423,9 @@ const CreatorHubPage = () => {
   }
 
   const myActiveBriefs = jobBriefs.filter(job => job.user_id === currentUserId);
-  const myAcceptedProposalsAsCompany = proposals.filter(p => 
-    p.status === 'Accettata' && myActiveBriefs.some(brief => brief.id === p.job_brief_id)
-  );
-  const mySentProposals = proposals.filter(p => p.user_id === currentUserId);
-  const myAcceptedProposalsAsInfluencer = mySentProposals.filter(p => p.status === 'Accettata');
-  const myPendingOrRejectedProposalsAsInfluencer = mySentProposals.filter(p => p.status !== 'Accettata');
+  const myProposalsForMyBriefs = proposals.filter(p => myActiveBriefs.some(brief => brief.id === p.job_brief_id));
 
+  const mySentProposals = proposals.filter(p => p.user_id === currentUserId);
 
   return (
     <div className="space-y-8 p-4">
@@ -360,16 +529,42 @@ const CreatorHubPage = () => {
                       <CardContent>
                         <p className="text-sm text-primary-foreground/80">{job.description}</p>
                         <h4 className="font-semibold mt-4 text-primary-foreground">Proposte Ricevute:</h4>
-                        {proposals.filter(p => p.job_brief_id === job.id && p.status === 'Inviata').length > 0 ? (
+                        {myProposalsForMyBriefs.filter(p => p.job_brief_id === job.id).length > 0 ? (
                           <div className="space-y-2 mt-2">
-                            {proposals.filter(p => p.job_brief_id === job.id && p.status === 'Inviata').map(p => (
+                            {myProposalsForMyBriefs.filter(p => p.job_brief_id === job.id).map(p => (
                               <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-md border border-white/20">
                                 <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></span>
-                                <span>Status: {p.status}</span>
-                                <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => handleAcceptProposal(p.id)} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">Accetta</Button>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1 rounded-full text-xs ${
+                                    p.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                                    p.status === 'accepted' ? 'bg-purple-100 text-purple-800' :
+                                    p.status === 'waiting_video' ? 'bg-yellow-100 text-yellow-800' :
+                                    p.status === 'in_review' ? 'bg-orange-100 text-orange-800' :
+                                    p.status === 'revision_requested' ? 'bg-red-100 text-red-800' :
+                                    p.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {p.status === 'pending' && 'Inviata'}
+                                    {p.status === 'accepted' && 'Accettata (Contratto da firmare)'}
+                                    {p.status === 'waiting_video' && 'In attesa di video'}
+                                    {p.status === 'in_review' && 'Video da revisionare'}
+                                    {p.status === 'revision_requested' && 'Revisione richiesta'}
+                                    {p.status === 'completed' && 'Completata'}
+                                    {p.status === 'rejected' && 'Rifiutata'}
+                                  </span>
+                                  {p.status === 'pending' && (
+                                    <Button size="sm" onClick={() => handleAcceptProposal(p)} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">Accetta</Button>
+                                  )}
+                                  {p.status === 'accepted' && p.payment_status === 'unpaid' && (
+                                    <Button size="sm" onClick={() => handlePayEscrow(p.id)} className="bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200">Paga Deposito</Button>
+                                  )}
+                                  {p.status === 'in_review' && (
+                                    <Button size="sm" onClick={() => { setSelectedProposalForReview(p); setIsReviewVideoModalOpen(true); }} className="bg-orange-600 text-white hover:bg-orange-700 transition-all duration-200">
+                                      <Video className="h-4 w-4 mr-1" /> Revisiona Video
+                                    </Button>
+                                  )}
                                   <Button size="sm" variant="outline" onClick={() => openChatWithUser(p.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
-                                    <MessageSquare className="h-4 w-4 mr-2" /> Messaggio
+                                    <MessageSquare className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </div>
@@ -387,33 +582,6 @@ const CreatorHubPage = () => {
               )}
             </CardContent>
           </Card>
-
-          {myAcceptedProposalsAsCompany.length > 0 && (
-            <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md mt-8">
-              <CardHeader>
-                <CardTitle className="text-primary-foreground">Contratti Attivi (Proposte Accettate)</CardTitle>
-                <CardDescription className="text-primary-foreground/80">Queste proposte sono state accettate e sono in fase di esecuzione.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {myAcceptedProposalsAsCompany.map(p => (
-                  <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-3 rounded-md border border-white/20">
-                    <div>
-                      <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
-                      <p className="text-xs text-primary-foreground/80">Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Accettata
-                      </span>
-                      <Button size="sm" variant="outline" onClick={() => openChatWithUser(p.user_id)} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
-                        <MessageSquare className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
 
@@ -479,18 +647,45 @@ const CreatorHubPage = () => {
               <h3 className="text-2xl font-semibold text-center mt-12 text-primary-foreground">Le Tue Proposte Inviate</h3>
               <p className="text-center text-primary-foreground/80 mb-6">Tieni traccia dello stato delle tue candidature.</p>
               <div className="max-w-2xl mx-auto space-y-4">
-                {myPendingOrRejectedProposalsAsInfluencer.length > 0 ? (
-                  myPendingOrRejectedProposalsAsInfluencer.map(p => (
+                {mySentProposals.length > 0 ? (
+                  mySentProposals.map(p => (
                     <Card key={p.id} className="bg-white/20 backdrop-blur-sm border-white/30 text-primary-foreground">
                       <CardContent className="flex items-center justify-between p-4">
                         <div>
                           <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
                           <p className="text-sm text-primary-foreground/80">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
+                          {p.feedback_notes && p.status === 'revision_requested' && (
+                            <p className="text-sm text-red-300 mt-1">Feedback: {p.feedback_notes}</p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`px-3 py-1 rounded-full text-sm ${p.status === 'Accettata' ? 'bg-green-100 text-green-800' : p.status === 'Rifiutata' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
-                            {p.status}
+                          <span className={`px-3 py-1 rounded-full text-sm ${
+                            p.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                            p.status === 'accepted' ? 'bg-purple-100 text-purple-800' :
+                            p.status === 'waiting_video' ? 'bg-yellow-100 text-yellow-800' :
+                            p.status === 'in_review' ? 'bg-orange-100 text-orange-800' :
+                            p.status === 'revision_requested' ? 'bg-red-100 text-red-800' :
+                            p.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {p.status === 'pending' && 'Inviata'}
+                            {p.status === 'accepted' && 'Accettata (Contratto da firmare)'}
+                            {p.status === 'waiting_video' && 'In attesa di video'}
+                            {p.status === 'in_review' && 'Video in revisione'}
+                            {p.status === 'revision_requested' && 'Revisione richiesta'}
+                            {p.status === 'completed' && 'Completata'}
+                            {p.status === 'rejected' && 'Rifiutata'}
                           </span>
+                          {p.status === 'accepted' && (
+                            <Button size="sm" onClick={() => { setSelectedProposalForContract(p); setIsContractModalOpen(true); }} className="bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200">
+                              <FileText className="h-4 w-4 mr-1" /> Firma Contratto
+                            </Button>
+                          )}
+                          {(p.status === 'waiting_video' || p.status === 'revision_requested') && (
+                            <Button size="sm" onClick={() => { setSelectedProposalForUpload(p); setVideoLink(p.video_url || ""); setSparkCode(p.spark_code || ""); setIsUploadVideoModalOpen(true); }} className="bg-yellow-600 text-white hover:bg-yellow-700 transition-all duration-200">
+                              <Video className="h-4 w-4 mr-1" /> Carica Video
+                            </Button>
+                          )}
                           <Button size="sm" variant="outline" onClick={() => {
                             const jobBrief = jobBriefs.find(job => job.id === p.job_brief_id);
                             if (jobBrief) openChatWithUser(jobBrief.user_id);
@@ -505,36 +700,6 @@ const CreatorHubPage = () => {
                   <p className="text-center text-primary-foreground/80">Nessuna proposta inviata. Inizia a proporti per i job post disponibili!</p>
                 )}
               </div>
-
-              {myAcceptedProposalsAsInfluencer.length > 0 && (
-                <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md mt-8">
-                  <CardHeader>
-                    <CardTitle className="text-primary-foreground">Contratti Attivi (Proposte Accettate)</CardTitle>
-                    <CardDescription className="text-primary-foreground/80">Queste proposte sono state accettate e sono in fase di esecuzione.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {myAcceptedProposalsAsInfluencer.map(p => (
-                      <div key={p.id} className="flex items-center justify-between text-sm bg-white/10 p-3 rounded-md border border-white/20">
-                        <div>
-                          <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
-                          <p className="text-xs text-primary-foreground/80">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" /> Accettata
-                          </span>
-                          <Button size="sm" variant="outline" onClick={() => {
-                            const jobBrief = jobBriefs.find(job => job.id === p.job_brief_id);
-                            if (jobBrief) openChatWithUser(jobBrief.user_id);
-                          }} className="bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200">
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
             </>
           )}
         </>
@@ -546,6 +711,145 @@ const CreatorHubPage = () => {
         chatPartner={chatPartnerName || "Utente Sconosciuto"}
         chatPartnerId={chatPartnerId || ""}
       />
+
+      {/* Influencer: Contract Acceptance Modal */}
+      <Dialog open={isContractModalOpen} onOpenChange={setIsContractModalOpen}>
+        <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Accetta Termini del Contratto</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Leggi attentamente i termini del contratto per la collaborazione "{selectedProposalForContract?.jobTitle}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-4 border rounded-md bg-white/10 text-primary-foreground max-h-[400px] overflow-y-auto">
+            <p className="text-sm whitespace-pre-wrap">{selectedProposalForContract?.contract_terms}</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => handleAcceptContractTerms(selectedProposalForContract!.id)} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">
+              Accetto i Termini
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Influencer: Upload Video Modal */}
+      <Dialog open={isUploadVideoModalOpen} onOpenChange={setIsUploadVideoModalOpen}>
+        <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Carica Video per "{selectedProposalForUpload?.jobTitle}"</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Inserisci il link al tuo video e il codice Spark Ads per la revisione.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="video-link" className="text-right text-foreground">
+                Link Video
+              </Label>
+              <Input
+                id="video-link"
+                placeholder="https://youtube.com/tuo-video"
+                className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                value={videoLink}
+                onChange={(e) => setVideoLink(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="spark-code" className="text-right text-foreground">
+                Codice Spark Ads
+              </Label>
+              <Input
+                id="spark-code"
+                placeholder="Inserisci il codice Spark Ads"
+                className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+                value={sparkCode}
+                onChange={(e) => setSparkCode(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleUploadVideoForReview} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">
+              Invia per Revisione
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Azienda: Video Review Modal */}
+      <Dialog open={isReviewVideoModalOpen} onOpenChange={setIsReviewVideoModalOpen}>
+        <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30 max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Revisiona Video per "{selectedProposalForReview?.jobTitle}"</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Guarda il video e decidi se approvarlo o richiedere modifiche.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedProposalForReview?.video_url ? (
+              <div className="aspect-video w-full bg-black rounded-md overflow-hidden">
+                {/* Simple iframe for video preview. In a real app, consider more robust video players. */}
+                <iframe
+                  src={selectedProposalForReview.video_url.replace("watch?v=", "embed/")}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                ></iframe>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground">Nessun video caricato o link non valido.</p>
+            )}
+            {selectedProposalForReview?.spark_code && (
+              <p className="text-sm text-primary-foreground/80">
+                Codice Spark Ads: <span className="font-mono bg-white/10 p-1 rounded">{selectedProposalForReview.spark_code}</span>
+              </p>
+            )}
+            {selectedProposalForReview?.feedback_notes && (
+              <div className="p-3 rounded-md bg-red-100 text-red-800 border border-red-300">
+                <p className="font-semibold">Note di Revisione Precedenti:</p>
+                <p className="text-sm">{selectedProposalForReview.feedback_notes}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <Button onClick={handleApproveAndPublish} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">
+              <CheckCircle2 className="h-4 w-4 mr-2" /> Approva e Pubblica
+            </Button>
+            <Button onClick={() => { setIsReviewVideoModalOpen(false); setIsFeedbackModalOpen(true); }} variant="outline" className="bg-red-600 text-white hover:bg-red-700 transition-all duration-200">
+              Richiedi Modifica
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Azienda: Feedback for Revision Modal */}
+      <Dialog open={isFeedbackModalOpen} onOpenChange={setIsFeedbackModalOpen}>
+        <DialogContent className="bg-white/80 backdrop-blur-md border border-white/30">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Richiedi Modifica per "{selectedProposalForReview?.jobTitle}"</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Scrivi le note di feedback per l'influencer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Label htmlFor="feedback-notes" className="text-foreground">
+              Note di Feedback
+            </Label>
+            <Textarea
+              id="feedback-notes"
+              placeholder="Specifica cosa deve essere modificato nel video..."
+              className="bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+              value={feedbackNotes}
+              onChange={(e) => setFeedbackNotes(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleRequestRevision} className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">
+              Invia Richiesta di Modifica
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

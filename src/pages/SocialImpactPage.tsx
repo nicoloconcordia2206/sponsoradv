@@ -14,6 +14,7 @@ import { useRole } from "@/lib/role-store";
 import { PlusCircle, MessageSquare, Trash2, CheckCircle2 } from "lucide-react"; // Import MessageSquare, Trash2, CheckCircle2 icons
 import { supabase } from "@/lib/supabaseClient"; // Import Supabase client
 import ChatDialog from "@/components/ChatDialog"; // Import ChatDialog
+import { SIMULATED_SUPPORT_ID } from "@/lib/constants"; // Import from constants
 
 interface SponsorshipRequest {
   id: string;

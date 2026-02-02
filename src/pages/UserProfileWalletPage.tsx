@@ -10,6 +10,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import ChatDialog from "@/components/ChatDialog";
 import { supabase } from "@/lib/supabaseClient";
 import { MessageSquare } from "lucide-react";
+import { SIMULATED_SUPPORT_ID } from "@/lib/constants"; // Import from constants
 
 interface Transaction {
   id: string;
@@ -27,9 +28,6 @@ interface Notification {
   read: boolean;
   user_id: string; // Link to the user
 }
-
-// Use a static valid UUID for the simulated support ID
-const SIMULATED_SUPPORT_ID = "00000000-0000-0000-0000-000000000001";
 
 const UserProfileWalletPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
