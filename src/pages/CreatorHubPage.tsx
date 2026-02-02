@@ -315,28 +315,56 @@ const CreatorHubPage = () => {
   };
 
   // Azienda: Paga Deposito (simulato)
-  const handlePayEscrow = async (proposalId: string) => {
+  const handlePayEscrow = async (proposal: Proposal) => {
     if (!currentUserId) {
       showError("Devi essere loggato per pagare il deposito.");
       return;
     }
 
-    const { error } = await supabase
+    // Fetch the campaign budget
+    const { data: campaignData, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('budget')
+      .eq('id', proposal.job_brief_id)
+      .single();
+
+    if (campaignError || !campaignData) {
+      console.error("Error fetching campaign budget for escrow:", campaignError);
+      showError("Errore nel recupero del budget della campagna per il deposito.");
+      return;
+    }
+
+    const budget = campaignData.budget;
+
+    // Update proposal status
+    const { error: proposalError } = await supabase
       .from('proposals')
       .update({ payment_status: 'escrow_funded' })
-      .eq('id', proposalId); // Assuming company owns the campaign, not the proposal directly
+      .eq('id', proposal.id);
 
-    if (error) {
-      console.error("ERRORE SUPABASE (handlePayEscrow):", error);
-      if (error.code === '403') {
+    if (proposalError) {
+      console.error("ERRORE SUPABASE (handlePayEscrow - proposal update):", proposalError);
+      if (proposalError.code === '403') {
         showError("Errore: Problema di Policy RLS. Non hai i permessi per pagare il deposito.");
       } else {
         showError("Errore durante il pagamento del deposito.");
       }
-    } else {
-      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, payment_status: 'escrow_funded' } : p));
-      showSuccess("Deposito pagato con successo! I fondi sono in escrow.");
+      return;
     }
+
+    // Update influencer's pending_balance
+    const { error: walletError } = await supabase
+      .from('wallets')
+      .upsert({ id: proposal.user_id, pending_balance: budget }, { onConflict: 'id' });
+
+    if (walletError) {
+      console.error("ERRORE SUPABASE (handlePayEscrow - wallet update):", walletError);
+      showError("Errore durante l'aggiornamento del saldo in sospeso dell'influencer.");
+      return;
+    }
+
+    setProposals(prev => prev.map(p => p.id === proposal.id ? { ...p, payment_status: 'escrow_funded' } : p));
+    showSuccess("Deposito pagato con successo! I fondi sono in escrow.");
   };
 
   // Azienda: Approva e Pubblica Video
@@ -346,7 +374,23 @@ const CreatorHubPage = () => {
       return;
     }
 
-    const { error } = await supabase
+    // Fetch the campaign budget
+    const { data: campaignData, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('budget')
+      .eq('id', selectedProposalForReview.job_brief_id)
+      .single();
+
+    if (campaignError || !campaignData) {
+      console.error("Error fetching campaign budget for approval:", campaignError);
+      showError("Errore nel recupero del budget della campagna per l'approvazione.");
+      return;
+    }
+
+    const budget = campaignData.budget;
+
+    // Update proposal status
+    const { error: proposalError } = await supabase
       .from('proposals')
       .update({
         status: 'completed',
@@ -354,19 +398,67 @@ const CreatorHubPage = () => {
       })
       .eq('id', selectedProposalForReview.id);
 
-    if (error) {
-      console.error("ERRORE SUPABASE (handleApproveAndPublish):", error);
-      if (error.code === '403') {
+    if (proposalError) {
+      console.error("ERRORE SUPABASE (handleApproveAndPublish - proposal update):", proposalError);
+      if (proposalError.code === '403') {
         showError("Errore: Problema di Policy RLS. Non hai i permessi per approvare il video.");
       } else {
         showError("Errore durante l'approvazione e pubblicazione del video.");
       }
-    } else {
-      setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'completed', payment_status: 'released' } : p));
-      showSuccess("Video approvato e pubblicato! Fondi rilasciati e ricevuta generata.");
-      setIsReviewVideoModalOpen(false);
-      setSelectedProposalForReview(null);
+      return;
     }
+
+    // Update influencer's wallet: move from pending to available, add to total earned
+    const { data: currentWallet, error: fetchWalletError } = await supabase
+      .from('wallets')
+      .select('total_earned, pending_balance, available_balance')
+      .eq('id', selectedProposalForReview.user_id)
+      .single();
+
+    if (fetchWalletError || !currentWallet) {
+      console.error("Error fetching influencer wallet for approval:", fetchWalletError);
+      showError("Errore nel recupero del wallet dell'influencer.");
+      return;
+    }
+
+    const newPendingBalance = currentWallet.pending_balance - budget;
+    const newAvailableBalance = currentWallet.available_balance + budget;
+    const newTotalEarned = currentWallet.total_earned + budget;
+
+    const { error: walletUpdateError } = await supabase
+      .from('wallets')
+      .update({
+        pending_balance: newPendingBalance,
+        available_balance: newAvailableBalance,
+        total_earned: newTotalEarned,
+      })
+      .eq('id', selectedProposalForReview.user_id);
+
+    if (walletUpdateError) {
+      console.error("ERRORE SUPABASE (handleApproveAndPublish - wallet update):", walletUpdateError);
+      showError("Errore durante l'aggiornamento del wallet dell'influencer.");
+      return;
+    }
+
+    // Simulate receipt generation
+    const receipt = `
+      RICEVUTA DI COLLABORAZIONE
+      ------------------------------------
+      ID Transazione: ${selectedProposalForReview.id}
+      Nome Azienda: ${userProfileName || "Azienda Sconosciuta"}
+      Nome Influencer: ${selectedProposalForReview.socialLink} (ID: ${selectedProposalForReview.user_id})
+      Importo: €${budget.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      Data: ${new Date().toLocaleDateString()}
+      Dicitura: Compenso per creazione contenuto digitale
+      ------------------------------------
+      Grazie per la collaborazione!
+    `;
+    console.log("Ricevuta Generata:\n", receipt); // Log receipt to console for now
+
+    setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'completed', payment_status: 'released' } : p));
+    showSuccess("Video approvato e pubblicato! Fondi rilasciati e ricevuta generata.");
+    setIsReviewVideoModalOpen(false);
+    setSelectedProposalForReview(null);
   };
 
   // Azienda: Richiedi Modifica Video
@@ -556,7 +648,7 @@ const CreatorHubPage = () => {
                                     <Button size="sm" onClick={() => handleAcceptProposal(p)} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">Accetta</Button>
                                   )}
                                   {p.status === 'accepted' && p.payment_status === 'unpaid' && (
-                                    <Button size="sm" onClick={() => handlePayEscrow(p.id)} className="bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200">Paga Deposito</Button>
+                                    <Button size="sm" onClick={() => handlePayEscrow(p)} className="bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200">Paga Deposito</Button>
                                   )}
                                   {p.status === 'in_review' && (
                                     <Button size="sm" onClick={() => { setSelectedProposalForReview(p); setIsReviewVideoModalOpen(true); }} className="bg-orange-600 text-white hover:bg-orange-700 transition-all duration-200">
@@ -655,7 +747,10 @@ const CreatorHubPage = () => {
                           <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
                           <p className="text-sm text-primary-foreground/80">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
                           {p.feedback_notes && p.status === 'revision_requested' && (
-                            <p className="text-sm text-red-300 mt-1">Feedback: {p.feedback_notes}</p>
+                            <div className="p-2 mt-2 rounded-md bg-red-500/20 text-red-300 border border-red-400">
+                              <p className="font-semibold">Feedback Richiesto:</p>
+                              <p className="text-sm">{p.feedback_notes}</p>
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2">

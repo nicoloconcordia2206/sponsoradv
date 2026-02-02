@@ -29,10 +29,23 @@ interface Notification {
   user_id: string; // Link to the user
 }
 
+interface Wallet {
+  total_earned: number;
+  pending_balance: number;
+  available_balance: number;
+}
+
+interface Profile {
+  full_name: string | null;
+  username: string | null;
+  company_name: string | null;
+  address: string | null;
+  fiscal_code: string | null;
+}
+
 const UserProfileWalletPage = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  // Balance will remain client-side for now, but ideally derived from transactions or user profile in DB
-  const [balance, setBalance] = useState(0.00); 
+  const [wallet, setWallet] = useState<Wallet>({ total_earned: 0, pending_balance: 0, available_balance: 0 });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +54,13 @@ const UserProfileWalletPage = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState<string | null>(null);
+
+  // Fiscal data states
+  const [companyName, setCompanyName] = useState("");
+  const [address, setAddress] = useState("");
+  const [fiscalCode, setFiscalCode] = useState("");
+  const [profileFullName, setProfileFullName] = useState<string | null>(null);
+
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -56,6 +76,34 @@ const UserProfileWalletPage = () => {
 
     const fetchUserData = async () => {
       setLoading(true);
+
+      // Fetch wallet data
+      const { data: walletData, error: walletError } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('id', currentUserId)
+        .single();
+
+      if (walletError && walletError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine for a new user
+        console.error("Error fetching wallet:", walletError);
+        showError("Errore nel caricamento del wallet.");
+      } else if (walletData) {
+        setWallet(walletData as Wallet);
+      } else {
+        // If no wallet exists, create one with default values
+        const { data: newWalletData, error: newWalletError } = await supabase
+          .from('wallets')
+          .insert([{ id: currentUserId, total_earned: 0, pending_balance: 0, available_balance: 0 }])
+          .select()
+          .single();
+        if (newWalletError) {
+          console.error("Error creating new wallet:", newWalletError);
+          showError("Errore nella creazione del wallet.");
+        } else if (newWalletData) {
+          setWallet(newWalletData as Wallet);
+        }
+      }
+
       // Fetch transactions
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('transactions')
@@ -64,15 +112,10 @@ const UserProfileWalletPage = () => {
         .order('date', { ascending: false });
 
       if (transactionsError) {
-        console.error("Error fetching transactions:", transactionsError); // Log detailed error for debugging
-        showError("Errore nel caricamento delle transazioni."); // Generic error message
+        console.error("Error fetching transactions:", transactionsError);
+        showError("Errore nel caricamento delle transazioni.");
       } else {
         setTransactions(transactionsData as Transaction[]);
-        // Calculate balance from transactions
-        const newBalance = transactionsData.reduce((acc, tx) => {
-          return tx.type === 'credit' ? acc + tx.amount : acc - tx.amount;
-        }, 0);
-        setBalance(newBalance);
       }
 
       // Fetch notifications
@@ -83,11 +126,29 @@ const UserProfileWalletPage = () => {
         .order('timestamp', { ascending: false });
 
       if (notificationsError) {
-        console.error("Error fetching notifications:", notificationsError); // Log detailed error for debugging
-        showError("Errore nel caricamento delle notifiche."); // Generic error message
+        console.error("Error fetching notifications:", notificationsError);
+        showError("Errore nel caricamento delle notifiche.");
       } else {
         setNotifications(notificationsData as Notification[]);
       }
+
+      // Fetch profile data for fiscal info
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, company_name, address, fiscal_code')
+        .eq('id', currentUserId)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error("Error fetching profile for fiscal data:", profileError);
+        showError("Errore nel caricamento dei dati fiscali.");
+      } else if (profileData) {
+        setProfileFullName(profileData.full_name);
+        setCompanyName(profileData.company_name || "");
+        setAddress(profileData.address || "");
+        setFiscalCode(profileData.fiscal_code || "");
+      }
+
       setLoading(false);
     };
 
@@ -106,15 +167,15 @@ const UserProfileWalletPage = () => {
     };
     const { data, error } = await supabase.from('notifications').insert([newNotification]).select();
     if (error) {
-      console.error("Error adding notification:", error); // Log detailed error for debugging
-      showError("Errore durante l'aggiunta della notifica."); // Generic error message
+      console.error("Error adding notification:", error);
+      showError("Errore durante l'aggiunta della notifica.");
     } else if (data && data.length > 0) {
       setNotifications(prev => [data[0] as Notification, ...prev]);
     }
   };
 
   const handleMakePayment = async (amount: number) => {
-    if (balance < amount) {
+    if (wallet.available_balance < amount) {
       showError("Saldo insufficiente per effettuare il pagamento.");
       return;
     }
@@ -130,11 +191,11 @@ const UserProfileWalletPage = () => {
 
     const { data: transactionData, error: transactionError } = await supabase.from('transactions').insert([newTransaction]).select();
     if (transactionError) {
-      console.error("Error making payment:", transactionError); // Log detailed error for debugging
-      showError("Errore durante l'elaborazione del pagamento."); // Generic error message
+      console.error("Error making payment:", transactionError);
+      showError("Errore durante l'elaborazione del pagamento.");
     } else if (transactionData && transactionData.length > 0) {
       setTransactions(prev => [transactionData[0] as Transaction, ...prev]);
-      setBalance(prev => prev - amount); // Update local balance
+      setWallet(prev => ({ ...prev, available_balance: prev.available_balance - amount })); // Update local balance
       showSuccess(`Pagamento di €${amount} elaborato!`);
 
       const newNotification: Omit<Notification, 'id'> = {
@@ -145,8 +206,8 @@ const UserProfileWalletPage = () => {
       };
       const { data: notificationData, error: notificationError } = await supabase.from('notifications').insert([newNotification]).select();
       if (notificationError) {
-        console.error("Error adding payment notification:", notificationError); // Log detailed error for debugging
-        showError("Errore durante l'aggiunta della notifica di pagamento."); // Generic error message
+        console.error("Error adding payment notification:", notificationError);
+        showError("Errore durante l'aggiunta della notifica di pagamento.");
       } else if (notificationData && notificationData.length > 0) {
         setNotifications(prev => [notificationData[0] as Notification, ...prev]);
       }
@@ -160,10 +221,75 @@ const UserProfileWalletPage = () => {
       .eq('id', id);
 
     if (error) {
-      console.error("Error marking notification as read:", error); // Log detailed error for debugging
-      showError("Errore nell'aggiornamento della notifica."); // Generic error message
+      console.error("Error marking notification as read:", error);
+      showError("Errore nell'aggiornamento della notifica.");
     } else {
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    }
+  };
+
+  const handleRequestWithdrawal = async () => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per richiedere un prelievo.");
+      return;
+    }
+    if (wallet.available_balance <= 0) {
+      showError("Non hai fondi disponibili per il prelievo.");
+      return;
+    }
+
+    // Simulate sending a notification to an admin or a PayPal request
+    showSuccess(`Richiesta di prelievo di €${wallet.available_balance.toLocaleString()} inviata!`);
+
+    const newNotification: Omit<Notification, 'id'> = {
+      message: `Richiesta di prelievo di €${wallet.available_balance.toLocaleString()} inviata.`,
+      timestamp: new Date().toLocaleString(),
+      read: false,
+      user_id: currentUserId,
+    };
+    const { data, error } = await supabase.from('notifications').insert([newNotification]).select();
+    if (error) {
+      console.error("Error adding withdrawal notification:", error);
+      showError("Errore durante l'aggiunta della notifica di prelievo.");
+    } else if (data && data.length > 0) {
+      setNotifications(prev => [data[0] as Notification, ...prev]);
+    }
+
+    // In a real scenario, this would trigger a backend process to handle the actual withdrawal
+    // For now, we'll just clear the available balance locally and in DB
+    const { error: walletUpdateError } = await supabase
+      .from('wallets')
+      .update({ available_balance: 0 })
+      .eq('id', currentUserId);
+
+    if (walletUpdateError) {
+      console.error("Error updating wallet after withdrawal request:", walletUpdateError);
+      showError("Errore nell'aggiornamento del wallet dopo la richiesta di prelievo.");
+    } else {
+      setWallet(prev => ({ ...prev, available_balance: 0 }));
+    }
+  };
+
+  const handleSaveFiscalData = async () => {
+    if (!currentUserId) {
+      showError("Devi essere loggato per salvare i dati fiscali.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        company_name: companyName,
+        address: address,
+        fiscal_code: fiscalCode,
+      })
+      .eq('id', currentUserId);
+
+    if (error) {
+      console.error("Error saving fiscal data:", error);
+      showError("Errore durante il salvataggio dei dati fiscali.");
+    } else {
+      showSuccess("Dati fiscali salvati con successo!");
     }
   };
 
@@ -194,8 +320,8 @@ const UserProfileWalletPage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="user-name" className="text-primary-foreground">Nome</Label>
-            <Input id="user-name" value="Mario Rossi" readOnly className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground" />
+            <Label htmlFor="user-name" className="text-primary-foreground">Nome Completo</Label>
+            <Input id="user-name" value={profileFullName || "N/A"} readOnly className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground" />
           </div>
           <div>
             <Label htmlFor="user-email" className="text-primary-foreground">Email</Label>
@@ -217,6 +343,47 @@ const UserProfileWalletPage = () => {
         </CardContent>
       </Card>
 
+      {/* Sezione Dati di Fatturazione */}
+      <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md text-primary-foreground">
+        <CardHeader>
+          <CardTitle className="text-primary-foreground">Dati di Fatturazione</CardTitle>
+          <CardDescription className="text-primary-foreground/80">Inserisci o aggiorna i tuoi dati per la fatturazione.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="company-name" className="text-primary-foreground">Nome / Ragione Sociale</Label>
+            <Input
+              id="company-name"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="La tua azienda o nome completo"
+              className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
+            />
+          </div>
+          <div>
+            <Label htmlFor="address" className="text-primary-foreground">Indirizzo</Label>
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Via, numero civico, CAP, città"
+              className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
+            />
+          </div>
+          <div>
+            <Label htmlFor="fiscal-code" className="text-primary-foreground">Codice Fiscale / P.IVA</Label>
+            <Input
+              id="fiscal-code"
+              value={fiscalCode}
+              onChange={(e) => setFiscalCode(e.target.value)}
+              placeholder="Il tuo codice fiscale o partita IVA"
+              className="bg-white/30 backdrop-blur-sm border-white/40 text-primary-foreground placeholder:text-primary-foreground/70"
+            />
+          </div>
+          <Button onClick={handleSaveFiscalData} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200">Salva Dati Fiscali</Button>
+        </CardContent>
+      </Card>
+
       {/* Sezione Wallet e Pagamenti */}
       <Card className="max-w-2xl mx-auto bg-white/20 backdrop-blur-md border border-white/30 shadow-md text-primary-foreground">
         <CardHeader>
@@ -225,8 +392,16 @@ const UserProfileWalletPage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between text-lg font-semibold">
+            <span>Totale Guadagnato:</span>
+            <span>€ {wallet.total_earned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex items-center justify-between text-lg font-semibold">
+            <span>Saldo in Sospeso:</span>
+            <span>€ {wallet.pending_balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex items-center justify-between text-lg font-semibold">
             <span>Saldo Disponibile:</span>
-            <span>€ {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span>€ {wallet.available_balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           <Separator className="bg-white/30" />
           <h3 className="text-lg font-semibold text-primary-foreground">Transazioni Recenti</h3>
@@ -244,9 +419,9 @@ const UserProfileWalletPage = () => {
               <p className="text-sm text-primary-foreground/80">Nessuna transazione recente.</p>
             )}
           </div>
-          <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" onClick={() => handleMakePayment(100)}>Effettua un Pagamento (Simulato)</Button>
+          <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200" onClick={handleRequestWithdrawal}>Richiedi Prelievo</Button>
           <p className="text-xs text-primary-foreground/70 mt-2">
-            L'integrazione con sistemi di pagamento reali come Stripe richiederebbe la configurazione di un backend per gestire le chiavi API e i webhook.
+            La richiesta di prelievo invierà una notifica per l'elaborazione manuale o l'integrazione con un servizio di pagamento esterno.
           </p>
         </CardContent>
       </Card>

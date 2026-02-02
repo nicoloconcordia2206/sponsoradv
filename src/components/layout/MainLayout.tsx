@@ -20,15 +20,29 @@ const MainLayout: React.FC = () => {
   const { role, loading: roleLoading } = useRole();
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userFullName, setUserFullName] = useState<string | null>(null); // New state for user's full name
 
   useEffect(() => {
-    const fetchUserEmail = async () => {
+    const fetchUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserEmail(user.email);
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, username')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("Error fetching user profile name:", profileError);
+        } else if (profileData) {
+          setUserFullName(profileData.full_name || profileData.username || null);
+        } else {
+          setUserFullName(null);
+        }
       }
     };
-    fetchUserEmail();
+    fetchUserAndProfile();
   }, []);
 
   const handleLogout = async () => {
@@ -99,9 +113,9 @@ const MainLayout: React.FC = () => {
           </NavigationMenuList>
         </NavigationMenu>
         <div className="flex items-center gap-4">
-          {userEmail && (
+          {userFullName && (
             <span className="text-sm font-medium text-primary-foreground/80">
-              {userEmail}
+              Ciao, {userFullName}!
             </span>
           )}
           {role && (
