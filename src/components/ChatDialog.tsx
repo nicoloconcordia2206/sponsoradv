@@ -193,7 +193,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                     {msg.sender_id === currentUserId
                       ? "Tu"
                       : msg.sender_id === SIMULATED_SUPPORT_ID
-                        ? "AI"
+                        ? "SUPPORTO HUB" // Changed from "AI" to "SUPPORTO HUB"
                         : chatPartner}
                   </p>
                   <p className="text-sm">{msg.text}</p>
