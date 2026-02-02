@@ -60,8 +60,8 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
         .order('timestamp', { ascending: true });
 
       if (error) {
-        console.error("Error fetching messages:", error); // Log detailed error for debugging
-        showError("Errore nel caricamento dei messaggi."); // Generic error message
+        console.error("Error fetching messages:", error);
+        showError("Errore nel caricamento dei messaggi.");
       } else {
         setMessages(data as Message[]);
       }
@@ -79,7 +79,6 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
         (payload) => {
           const newMsg = payload.new as Message;
           // Only add if it's relevant to this chat (either sent by current user or to current user from this partner)
-          // Use functional update to avoid 'messages' in dependency array
           if ((newMsg.sender_id === currentUserId && newMsg.receiver_id === chatPartnerId) ||
               (newMsg.sender_id === chatPartnerId && newMsg.receiver_id === currentUserId)) {
             setMessages((prevMessages) => {
@@ -97,7 +96,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isOpen, currentUserId, chatPartnerId]); // Removed 'messages' from dependency array
+  }, [isOpen, currentUserId, chatPartnerId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -106,21 +105,28 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
   const handleSendMessage = async () => {
     if (newMessage.trim() === "" || !currentUserId || !chatPartnerId) return;
 
-    const newMsg: Omit<Message, 'id'> = {
+    const tempId = `temp-${Date.now()}`; // Temporary ID for optimistic update
+    const optimisticMsg: Message = {
+      id: tempId,
       sender_id: currentUserId,
       receiver_id: chatPartnerId,
       text: newMessage,
-      timestamp: new Date().toISOString(), // Use ISO string for better sorting/storage
+      timestamp: new Date().toISOString(),
       read: false,
     };
 
-    const { data, error } = await supabase.from('messages').insert([newMsg]).select();
+    setMessages((prev) => [...prev, optimisticMsg]); // Optimistic update
+    setNewMessage("");
+
+    const { data, error } = await supabase.from('messages').insert([optimisticMsg]).select();
     if (error) {
-      console.error("Error sending message:", error); // Log detailed error for debugging
-      showError("Errore durante l'invio del messaggio."); // Generic error message
+      console.error("Error sending message:", error);
+      showError("Errore durante l'invio del messaggio.");
+      // Revert optimistic update if error
+      setMessages((prev) => prev.filter(msg => msg.id !== tempId));
     } else if (data && data.length > 0) {
-      setMessages((prev) => [...prev, data[0] as Message]); // Aggiungi il messaggio inviato immediatamente
-      setNewMessage("");
+      // Replace optimistic message with actual message from DB
+      setMessages((prev) => prev.map(msg => msg.id === tempId ? data[0] as Message : msg));
     }
 
     // Simulate a response from the chat partner if it's the support chat
@@ -154,7 +160,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
         };
         const { error: botError } = await supabase.from('messages').insert([botResponse]);
         if (botError) {
-          console.error("Error sending bot response:", botError); // Log detailed error for debugging
+          console.error("Error sending bot response:", botError);
         }
       }, 1000);
     }
@@ -163,7 +169,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
   if (loading && isOpen) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
+        <DialogContent key={chatPartnerId} className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
           <div className="flex-grow flex items-center justify-center text-muted-foreground">Caricamento messaggi...</div>
         </DialogContent>
       </Dialog>
@@ -172,7 +178,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
+      <DialogContent key={chatPartnerId} className="sm:max-w-[425px] flex flex-col h-[80vh] bg-white/80 backdrop-blur-md border border-white/30">
         <DialogHeader>
           <DialogTitle className="text-gray-900">Chat con {chatPartner}</DialogTitle>
           <DialogDescription className="text-gray-600">
@@ -190,7 +196,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                   className={`max-w-[70%] p-2 rounded-lg ${
                     msg.sender_id === currentUserId
                       ? "bg-blue-600 text-white"
-                      : "bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100" // Improved contrast
+                      : "bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100"
                   }`}
                 >
                   <p className="text-xs font-semibold mb-1">
