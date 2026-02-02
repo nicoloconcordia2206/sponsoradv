@@ -118,7 +118,16 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
     setMessages((prev) => [...prev, optimisticMsg]); // Optimistic update
     setNewMessage("");
 
-    const { data, error } = await supabase.from('messages').insert([optimisticMsg]).select();
+    // Prepare message for Supabase, WITHOUT the temporary ID
+    const messageToInsert = {
+      sender_id: currentUserId,
+      receiver_id: chatPartnerId,
+      text: optimisticMsg.text,
+      timestamp: optimisticMsg.timestamp,
+      read: optimisticMsg.read,
+    };
+
+    const { data, error } = await supabase.from('messages').insert([messageToInsert]).select();
     if (error) {
       console.error("Error sending message:", error);
       showError("Errore durante l'invio del messaggio.");
