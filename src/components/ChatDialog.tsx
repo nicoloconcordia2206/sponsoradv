@@ -140,56 +140,57 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
 
     // Simulate a response from the chat partner if it's the support chat
     if (chatPartnerId === SIMULATED_SUPPORT_ID) {
+      // Add a "thinking" message optimistically
+      const thinkingBotId = `temp-bot-thinking-${Date.now()}`;
+      const optimisticThinkingMsg: Message = {
+        id: thinkingBotId,
+        sender_id: chatPartnerId,
+        receiver_id: currentUserId,
+        text: "Sto elaborando la tua richiesta...", // Thinking message
+        timestamp: new Date().toISOString(),
+        read: false,
+      };
+      setMessages((prev) => [...prev, optimisticThinkingMsg]);
+
       setTimeout(async () => {
         let botText = "Ho ricevuto il tuo messaggio! Un operatore ti risponderà a breve.";
         const lowerCaseMessage = newMessage.toLowerCase();
 
-        if (lowerCaseMessage.includes("campagna") || lowerCaseMessage.includes("brief") || lowerCaseMessage.includes("creare")) {
-          botText = "Per creare o gestire le tue campagne video, visita la sezione 'Creator Hub'. Lì puoi pubblicare nuovi brief, gestire le proposte ricevute e monitorare i contratti attivi con gli influencer.";
-        } else if (lowerCaseMessage.includes("investimento") || lowerCaseMessage.includes("startup") || lowerCaseMessage.includes("finanziare")) {
-          botText = "Se sei un'azienda in cerca di fondi, puoi caricare il pitch della tua startup nella sezione 'Investment Floor'. Se sei un investitore, puoi esplorare le opportunità e inviare Lettere di Intenti (LOI) per le startup che ti interessano.";
-        } else if (lowerCaseMessage.includes("ruolo") || lowerCaseMessage.includes("profilo") || lowerCaseMessage.includes("wallet") || lowerCaseMessage.includes("documenti")) {
-          botText = "Puoi visualizzare e gestire il tuo ruolo, le informazioni personali, i documenti caricati, le transazioni del tuo wallet e le notifiche nella sezione 'Profilo e Wallet'.";
-        } else if (lowerCaseMessage.includes("social impact") || lowerCaseMessage.includes("progetto sociale") || lowerCaseMessage.includes("sponsorizzazione")) {
-          botText = "Per scoprire o pubblicare progetti di sostegno e iniziative sociali, visita la sezione 'Social Impact'. Qui puoi caricare le tue richieste di sponsorizzazione o finanziare progetti attivi nella tua comunità.";
-        } else if (lowerCaseMessage.includes("messaggi") || lowerCaseMessage.includes("chat")) {
-          botText = "La sezione 'Messaggi' ti permette di gestire tutte le tue conversazioni con altri utenti e con il supporto di ConnectHub. Puoi aprire nuove chat o continuare quelle esistenti.";
-        } else if (lowerCaseMessage.includes("problema") || lowerCaseMessage.includes("aiuto") || lowerCaseMessage.includes("supporto")) {
-          botText = "Capisco che hai un problema. Per una risposta più rapida, prova a riformulare la tua domanda specificando l'area dell'app (es. 'problema con i pagamenti nel wallet'). Se non trovi una soluzione, ho inoltrato la tua richiesta al nostro team di supporto e ti contatteranno il prima possibile.";
-        } else {
-          botText = "Sono il SUPPORTO HUB di ConnectHub! Posso aiutarti con informazioni su 'Creator Hub', 'Social Impact', 'Investment Floor', 'Profilo e Wallet' o 'Messaggi'. Prova a chiedermi qualcosa su queste sezioni!";
+        if (lowerCaseMessage.includes("creator hub") || lowerCaseMessage.includes("campagna") || lowerCaseMessage.includes("brief") || lowerCaseMessage.includes("creare campagna") || lowerCaseMessage.includes("pubblicare brief") || lowerCaseMessage.includes("influencer")) {
+          botText = "Capisco che sei interessato al Creator Hub. Questa sezione è il cuore per la creazione di campagne video. Qui puoi pubblicare nuovi brief, gestire le proposte ricevute dagli influencer e monitorare lo stato dei contratti attivi. Se sei un influencer, puoi trovare nuove opportunità di collaborazione.";
+        } else if (lowerCaseMessage.includes("investment floor") || lowerCaseMessage.includes("investimento") || lowerCaseMessage.includes("startup") || lowerCaseMessage.includes("finanziare") || lowerCaseMessage.includes("cercare fondi") || lowerCaseMessage.includes("loi") || lowerCaseMessage.includes("lettera di intenti")) {
+          botText = "L'Investment Floor è il luogo per le opportunità di investimento. Se sei un'azienda, puoi caricare il pitch della tua startup per attrarre investitori. Se sei un investitore, puoi esplorare i pitch disponibili, inviare Lettere di Intenti (LOI) e finanziare le startup che ritieni più promettenti.";
+        } else if (lowerCaseMessage.includes("profilo") || lowerCaseMessage.includes("wallet") || lowerCaseMessage.includes("documenti") || lowerCaseMessage.includes("ruolo") || lowerCaseMessage.includes("transazioni") || lowerCaseMessage.includes("notifiche")) {
+          botText = "La sezione 'Profilo e Wallet' ti permette di gestire tutte le tue informazioni personali. Qui puoi visualizzare e aggiornare il tuo ruolo, caricare documenti, controllare il saldo del tuo wallet, vedere le transazioni recenti e gestire le tue notifiche.";
+        } else if (lowerCaseMessage.includes("social impact") || lowerCaseMessage.includes("progetto sociale") || lowerCaseMessage.includes("sponsorizzazione") || lowerCaseMessage.includes("sostenere") || lowerCaseMessage.includes("comunità") || lowerCaseMessage.includes("raccolta fondi")) {
+          botText = "La sezione Social Impact è dedicata ai progetti che fanno la differenza. Se sei una squadra o un'organizzazione, puoi caricare le tue richieste di sponsorizzazione per trovare supporto. Se sei un'azienda o un investitore, puoi scoprire e finanziare progetti attivi nella tua comunità.";
+        } else if (lowerCaseMessage.includes("messaggi") || lowerCaseMessage.includes("chat") || lowerCaseMessage.includes("comunicare")) {
+          botText = "La sezione 'Messaggi' è il tuo centro di comunicazione. Qui puoi gestire tutte le tue conversazioni con altri utenti e con il team di supporto di ConnectHub. Puoi avviare nuove chat o continuare quelle esistenti per qualsiasi necessità.";
+        } else if (lowerCaseMessage.includes("problema") || lowerCaseMessage.includes("aiuto") || lowerCaseMessage.includes("supporto") || lowerCaseMessage.includes("non funziona") || lowerCaseMessage.includes("errore")) {
+          botText = "Capisco che stai riscontrando un problema e sono qui per aiutarti. Per una risposta più efficace, potresti specificare meglio l'area dell'app o la funzionalità che ti sta dando problemi? Ad esempio: 'problema con i pagamenti nel wallet' o 'non riesco a caricare un brief'. Se la situazione persiste, inoltrerò la tua richiesta a un operatore umano.";
+        } else if (lowerCaseMessage.includes("ciao") || lowerCaseMessage.includes("salve") || lowerCaseMessage.includes("buongiorno") || lowerCaseMessage.includes("buonasera")) {
+          botText = "Ciao! Sono il SUPPORTO HUB di ConnectHub. Come posso esserti utile oggi? Puoi chiedermi informazioni su 'Creator Hub', 'Social Impact', 'Investment Floor', 'Profilo e Wallet' o 'Messaggi'.";
+        }
+        else {
+          botText = "Sono il SUPPORTO HUB di ConnectHub! Non ho capito bene la tua richiesta. Puoi provare a riformulare la domanda o chiedermi informazioni su 'Creator Hub', 'Social Impact', 'Investment Floor', 'Profilo e Wallet' o 'Messaggi'.";
         }
 
-        const tempBotId = `temp-bot-${Date.now()}`; // Temporary ID for bot's optimistic update
-        const optimisticBotMsg: Message = {
-          id: tempBotId,
-          sender_id: chatPartnerId, // Bot is the sender
-          receiver_id: currentUserId, // Current user is the receiver
-          text: botText,
-          timestamp: new Date().toISOString(),
-          read: false,
-        };
-
-        setMessages((prev) => [...prev, optimisticBotMsg]); // Optimistic update for bot's message
+        // Replace the "thinking" message with the actual response
+        setMessages((prev) => prev.map(msg => msg.id === thinkingBotId ? { ...msg, text: botText, id: `bot-response-${Date.now()}` } : msg));
 
         const botResponseToInsert = {
           sender_id: chatPartnerId,
           receiver_id: currentUserId,
           text: botText,
-          timestamp: optimisticBotMsg.timestamp,
+          timestamp: new Date().toISOString(),
           read: false,
         };
 
-        const { data: botData, error: botError } = await supabase.from('messages').insert([botResponseToInsert]).select();
+        const { error: botError } = await supabase.from('messages').insert([botResponseToInsert]);
         if (botError) {
           console.error("Error sending bot response:", botError);
-          // Revert optimistic bot update if error
-          setMessages((prev) => prev.filter(msg => msg.id !== tempBotId));
-        } else if (botData && botData.length > 0) {
-          // Replace optimistic bot message with actual message from DB
-          setMessages((prev) => prev.map(msg => msg.id === tempBotId ? botData[0] as Message : msg));
         }
-      }, 1000);
+      }, 1500); // Increased delay slightly for more natural "thinking"
     }
   };
 
