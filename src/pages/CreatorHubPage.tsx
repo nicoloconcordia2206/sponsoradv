@@ -546,7 +546,7 @@ const CreatorHubPage = () => {
                     <DialogDescription className="text-muted-foreground">
                       Compila i dettagli per la tua prossima campagna video.
                     </DialogDescription>
-                  </DialogDescription>
+                  </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="brief-title" className="text-right text-foreground">
@@ -900,7 +900,7 @@ const CreatorHubPage = () => {
               </p>
             )}
             {selectedProposalForReview?.feedback_notes && (
-              <div className="p-3 rounded-md bg-red-100 text-red-800 border border-red-300">
+              <div className="p-3 rounded-md bg-red-500/20 text-red-300 border border-red-400">
                 <p className="font-semibold">Note di Revisione Precedenti:</p>
                 <p className="text-sm">{selectedProposalForReview.feedback_notes}</p>
               </div>
@@ -933,7 +933,7 @@ const CreatorHubPage = () => {
             <Textarea
               id="feedback-notes"
               placeholder="Specifica cosa deve essere modificato nel video..."
-              className="bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
+              className="col-span-3 bg-white/50 backdrop-blur-sm border-white/30 text-foreground placeholder:text-foreground/70"
               value={feedbackNotes}
               onChange={(e) => setFeedbackNotes(e.target.value)}
             />
