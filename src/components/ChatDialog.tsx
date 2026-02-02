@@ -115,7 +115,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
       read: false,
     };
 
-    setMessages((prev) => [...prev, optimisticMsg]); // Optimistic update
+    setMessages((prev) => [...prev, optimisticMsg]); // Optimistic update for user's message
     setNewMessage("");
 
     // Prepare message for Supabase, WITHOUT the temporary ID
@@ -160,16 +160,34 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
           botText = "Sono il SUPPORTO HUB di ConnectHub! Posso aiutarti con informazioni su 'Creator Hub', 'Social Impact', 'Investment Floor', 'Profilo e Wallet' o 'Messaggi'. Prova a chiedermi qualcosa su queste sezioni!";
         }
 
-        const botResponse: Omit<Message, 'id'> = {
+        const tempBotId = `temp-bot-${Date.now()}`; // Temporary ID for bot's optimistic update
+        const optimisticBotMsg: Message = {
+          id: tempBotId,
           sender_id: chatPartnerId, // Bot is the sender
           receiver_id: currentUserId, // Current user is the receiver
           text: botText,
           timestamp: new Date().toISOString(),
           read: false,
         };
-        const { error: botError } = await supabase.from('messages').insert([botResponse]);
+
+        setMessages((prev) => [...prev, optimisticBotMsg]); // Optimistic update for bot's message
+
+        const botResponseToInsert = {
+          sender_id: chatPartnerId,
+          receiver_id: currentUserId,
+          text: botText,
+          timestamp: optimisticBotMsg.timestamp,
+          read: false,
+        };
+
+        const { data: botData, error: botError } = await supabase.from('messages').insert([botResponseToInsert]).select();
         if (botError) {
           console.error("Error sending bot response:", botError);
+          // Revert optimistic bot update if error
+          setMessages((prev) => prev.filter(msg => msg.id !== tempBotId));
+        } else if (botData && botData.length > 0) {
+          // Replace optimistic bot message with actual message from DB
+          setMessages((prev) => prev.map(msg => msg.id === tempBotId ? botData[0] as Message : msg));
         }
       }, 1000);
     }
