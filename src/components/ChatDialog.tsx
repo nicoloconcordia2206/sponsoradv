@@ -130,15 +130,19 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
         const lowerCaseMessage = newMessage.toLowerCase();
 
         if (lowerCaseMessage.includes("campagna") || lowerCaseMessage.includes("brief") || lowerCaseMessage.includes("creare")) {
-          botText = "Per creare o gestire le tue campagne video, visita la sezione 'Creator Hub'. Lì puoi pubblicare nuovi brief e gestire le proposte!";
+          botText = "Per creare o gestire le tue campagne video, visita la sezione 'Creator Hub'. Lì puoi pubblicare nuovi brief, gestire le proposte ricevute e monitorare i contratti attivi con gli influencer.";
         } else if (lowerCaseMessage.includes("investimento") || lowerCaseMessage.includes("startup") || lowerCaseMessage.includes("finanziare")) {
-          botText = "Se sei interessato a investire o a caricare il pitch della tua startup, la sezione 'Investment Floor' è il posto giusto per te!";
-        } else if (lowerCaseMessage.includes("ruolo") || lowerCaseMessage.includes("profilo")) {
-          botText = "Puoi visualizzare e gestire il tuo ruolo e le informazioni del profilo nella sezione 'Profilo e Wallet'.";
+          botText = "Se sei un'azienda in cerca di fondi, puoi caricare il pitch della tua startup nella sezione 'Investment Floor'. Se sei un investitore, puoi esplorare le opportunità e inviare Lettere di Intenti (LOI) per le startup che ti interessano.";
+        } else if (lowerCaseMessage.includes("ruolo") || lowerCaseMessage.includes("profilo") || lowerCaseMessage.includes("wallet") || lowerCaseMessage.includes("documenti")) {
+          botText = "Puoi visualizzare e gestire il tuo ruolo, le informazioni personali, i documenti caricati, le transazioni del tuo wallet e le notifiche nella sezione 'Profilo e Wallet'.";
+        } else if (lowerCaseMessage.includes("social impact") || lowerCaseMessage.includes("progetto sociale") || lowerCaseMessage.includes("sponsorizzazione")) {
+          botText = "Per scoprire o pubblicare progetti di sostegno e iniziative sociali, visita la sezione 'Social Impact'. Qui puoi caricare le tue richieste di sponsorizzazione o finanziare progetti attivi nella tua comunità.";
+        } else if (lowerCaseMessage.includes("messaggi") || lowerCaseMessage.includes("chat")) {
+          botText = "La sezione 'Messaggi' ti permette di gestire tutte le tue conversazioni con altri utenti e con il supporto di ConnectHub. Puoi aprire nuove chat o continuare quelle esistenti.";
         } else if (lowerCaseMessage.includes("problema") || lowerCaseMessage.includes("aiuto") || lowerCaseMessage.includes("supporto")) {
-          botText = "Capisco che hai un problema. Ho inoltrato la tua richiesta al nostro team di supporto. Ti contatteranno il prima possibile.";
-        } else if (lowerCaseMessage.includes("social impact") || lowerCaseMessage.includes("progetto sociale")) {
-          botText = "Per scoprire o pubblicare progetti di sostegno e iniziative sociali, visita la sezione 'Social Impact'.";
+          botText = "Capisco che hai un problema. Per una risposta più rapida, prova a riformulare la tua domanda specificando l'area dell'app (es. 'problema con i pagamenti nel wallet'). Se non trovi una soluzione, ho inoltrato la tua richiesta al nostro team di supporto e ti contatteranno il prima possibile.";
+        } else {
+          botText = "Sono il SUPPORTO HUB di ConnectHub! Posso aiutarti con informazioni su 'Creator Hub', 'Social Impact', 'Investment Floor', 'Profilo e Wallet' o 'Messaggi'. Prova a chiedermi qualcosa su queste sezioni!";
         }
 
         const botResponse: Omit<Message, 'id'> = {
@@ -193,7 +197,7 @@ const ChatDialog: React.FC<ChatDialogProps> = ({ isOpen, onClose, chatPartner, c
                     {msg.sender_id === currentUserId
                       ? "Tu"
                       : msg.sender_id === SIMULATED_SUPPORT_ID
-                        ? "SUPPORTO HUB" // Changed from "AI" to "SUPPORTO HUB"
+                        ? "SUPPORTO HUB"
                         : chatPartner}
                   </p>
                   <p className="text-sm">{msg.text}</p>
