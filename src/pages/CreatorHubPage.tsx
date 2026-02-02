@@ -29,7 +29,7 @@ interface Proposal {
   job_brief_id: string; // Link to the job brief
   jobTitle: string;
   socialLink: string;
-  status: 'pending' | 'accepted' | 'waiting_video' | 'in_review' | 'revision_requested' | 'completed' | 'rejected'; // Updated status values
+  status: 'Inviata' | 'Accettata' | 'In attesa di video' | 'In revisione' | 'Revisione richiesta' | 'Completata' | 'Rifiutata'; // Updated status values to Italian
   user_id: string; // Link to the user who sent it
   contract_terms: string | null; // New
   video_url: string | null; // New
@@ -202,7 +202,7 @@ const CreatorHubPage = () => {
       job_brief_id: currentJobForProposal.id,
       jobTitle: currentJobForProposal.title,
       socialLink: socialProfileLink,
-      status: 'pending', // Initial status
+      status: 'Inviata', // Changed from 'pending' to 'Inviata'
       user_id: currentUserId,
     };
 
@@ -235,7 +235,7 @@ const CreatorHubPage = () => {
 
     const { error } = await supabase
       .from('proposals')
-      .update({ status: 'accepted', contract_terms: CONTRACT_TEMPLATE }) // Set status to accepted and add contract terms
+      .update({ status: 'Accettata', contract_terms: CONTRACT_TEMPLATE }) // Changed from 'accepted' to 'Accettata'
       .eq('id', proposal.id);
 
     if (error) {
@@ -247,7 +247,7 @@ const CreatorHubPage = () => {
       }
       return;
     } else {
-      setProposals(prev => prev.map(p => p.id === proposal.id ? { ...p, status: 'accepted', contract_terms: CONTRACT_TEMPLATE } : p));
+      setProposals(prev => prev.map(p => p.id === proposal.id ? { ...p, status: 'Accettata', contract_terms: CONTRACT_TEMPLATE } : p));
       showSuccess(`Proposta accettata! L'influencer può ora visualizzare il contratto.`);
     }
   };
@@ -261,7 +261,7 @@ const CreatorHubPage = () => {
 
     const { error } = await supabase
       .from('proposals')
-      .update({ status: 'waiting_video' }) // Change status to waiting_video
+      .update({ status: 'In attesa di video' }) // Changed from 'waiting_video' to 'In attesa di video'
       .eq('id', proposalId)
       .eq('user_id', currentUserId); // Ensure only the influencer can accept
 
@@ -273,7 +273,7 @@ const CreatorHubPage = () => {
         showError("Errore durante l'accettazione dei termini del contratto.");
       }
     } else {
-      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'waiting_video' } : p));
+      setProposals(prev => prev.map(p => p.id === proposalId ? { ...p, status: 'In attesa di video' } : p));
       showSuccess("Termini del contratto accettati! Ora puoi caricare il video.");
       setIsContractModalOpen(false);
       setSelectedProposalForContract(null);
@@ -290,7 +290,7 @@ const CreatorHubPage = () => {
     const { error } = await supabase
       .from('proposals')
       .update({
-        status: 'in_review', // Change status to in_review
+        status: 'In revisione', // Changed from 'in_review' to 'In revisione'
         video_url: videoLink,
         spark_code: sparkCode,
       })
@@ -305,7 +305,7 @@ const CreatorHubPage = () => {
         showError("Errore durante il caricamento del video per la revisione.");
       }
     } else {
-      setProposals(prev => prev.map(p => p.id === selectedProposalForUpload.id ? { ...p, status: 'in_review', video_url: videoLink, spark_code: sparkCode } : p));
+      setProposals(prev => prev.map(p => p.id === selectedProposalForUpload.id ? { ...p, status: 'In revisione', video_url: videoLink, spark_code: sparkCode } : p));
       showSuccess("Video inviato per la revisione con successo!");
       setVideoLink("");
       setSparkCode("");
@@ -393,7 +393,7 @@ const CreatorHubPage = () => {
     const { error: proposalError } = await supabase
       .from('proposals')
       .update({
-        status: 'completed',
+        status: 'Completata', // Changed from 'completed' to 'Completata'
         payment_status: 'released',
       })
       .eq('id', selectedProposalForReview.id);
@@ -455,7 +455,7 @@ const CreatorHubPage = () => {
     `;
     console.log("Ricevuta Generata:\n", receipt); // Log receipt to console for now
 
-    setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'completed', payment_status: 'released' } : p));
+    setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'Completata', payment_status: 'released' } : p));
     showSuccess("Video approvato e pubblicato! Fondi rilasciati e ricevuta generata.");
     setIsReviewVideoModalOpen(false);
     setSelectedProposalForReview(null);
@@ -471,7 +471,7 @@ const CreatorHubPage = () => {
     const { error } = await supabase
       .from('proposals')
       .update({
-        status: 'revision_requested',
+        status: 'Revisione richiesta', // Changed from 'revision_requested' to 'Revisione richiesta'
         feedback_notes: feedbackNotes.trim(),
       })
       .eq('id', selectedProposalForReview.id);
@@ -484,7 +484,7 @@ const CreatorHubPage = () => {
         showError("Errore durante la richiesta di modifica.");
       }
     } else {
-      setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'revision_requested', feedback_notes: feedbackNotes.trim() } : p));
+      setProposals(prev => prev.map(p => p.id === selectedProposalForReview.id ? { ...p, status: 'Revisione richiesta', feedback_notes: feedbackNotes.trim() } : p));
       showSuccess("Richiesta di modifica inviata all'influencer.");
       setIsFeedbackModalOpen(false);
       setIsReviewVideoModalOpen(false);
@@ -546,7 +546,7 @@ const CreatorHubPage = () => {
                     <DialogDescription className="text-muted-foreground">
                       Compila i dettagli per la tua prossima campagna video.
                     </DialogDescription>
-                  </DialogHeader>
+                  </DialogDescription>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="brief-title" className="text-right text-foreground">
@@ -628,29 +628,29 @@ const CreatorHubPage = () => {
                                 <span>Influencer: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></span>
                                 <div className="flex items-center gap-2">
                                   <span className={`px-3 py-1 rounded-full text-xs ${
-                                    p.status === 'pending' ? 'bg-blue-100 text-blue-800' :
-                                    p.status === 'accepted' ? 'bg-purple-100 text-purple-800' :
-                                    p.status === 'waiting_video' ? 'bg-yellow-100 text-yellow-800' :
-                                    p.status === 'in_review' ? 'bg-orange-100 text-orange-800' :
-                                    p.status === 'revision_requested' ? 'bg-red-100 text-red-800' :
-                                    p.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    p.status === 'Inviata' ? 'bg-blue-100 text-blue-800' :
+                                    p.status === 'Accettata' ? 'bg-purple-100 text-purple-800' :
+                                    p.status === 'In attesa di video' ? 'bg-yellow-100 text-yellow-800' :
+                                    p.status === 'In revisione' ? 'bg-orange-100 text-orange-800' :
+                                    p.status === 'Revisione richiesta' ? 'bg-red-100 text-red-800' :
+                                    p.status === 'Completata' ? 'bg-green-100 text-green-800' :
                                     'bg-gray-100 text-gray-800'
                                   }`}>
-                                    {p.status === 'pending' && 'Inviata'}
-                                    {p.status === 'accepted' && 'Accettata (Contratto da firmare)'}
-                                    {p.status === 'waiting_video' && 'In attesa di video'}
-                                    {p.status === 'in_review' && 'Video da revisionare'}
-                                    {p.status === 'revision_requested' && 'Revisione richiesta'}
-                                    {p.status === 'completed' && 'Completata'}
-                                    {p.status === 'rejected' && 'Rifiutata'}
+                                    {p.status === 'Inviata' && 'Inviata'}
+                                    {p.status === 'Accettata' && 'Accettata (Contratto da firmare)'}
+                                    {p.status === 'In attesa di video' && 'In attesa di video'}
+                                    {p.status === 'In revisione' && 'Video da revisionare'}
+                                    {p.status === 'Revisione richiesta' && 'Revisione richiesta'}
+                                    {p.status === 'Completata' && 'Completata'}
+                                    {p.status === 'Rifiutata' && 'Rifiutata'}
                                   </span>
-                                  {p.status === 'pending' && (
+                                  {p.status === 'Inviata' && (
                                     <Button size="sm" onClick={() => handleAcceptProposal(p)} className="bg-green-600 text-white hover:bg-green-700 transition-all duration-200">Accetta</Button>
                                   )}
-                                  {p.status === 'accepted' && p.payment_status === 'unpaid' && (
+                                  {p.status === 'Accettata' && p.payment_status === 'unpaid' && (
                                     <Button size="sm" onClick={() => handlePayEscrow(p)} className="bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200">Paga Deposito</Button>
                                   )}
-                                  {p.status === 'in_review' && (
+                                  {p.status === 'In revisione' && (
                                     <Button size="sm" onClick={() => { setSelectedProposalForReview(p); setIsReviewVideoModalOpen(true); }} className="bg-orange-600 text-white hover:bg-orange-700 transition-all duration-200">
                                       <Video className="h-4 w-4 mr-1" /> Revisiona Video
                                     </Button>
@@ -746,7 +746,7 @@ const CreatorHubPage = () => {
                         <div>
                           <p className="font-medium text-primary-foreground">{p.jobTitle}</p>
                           <p className="text-sm text-primary-foreground/80">Link: <a href={p.socialLink} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">{p.socialLink}</a></p>
-                          {p.feedback_notes && p.status === 'revision_requested' && (
+                          {p.feedback_notes && p.status === 'Revisione richiesta' && (
                             <div className="p-2 mt-2 rounded-md bg-red-500/20 text-red-300 border border-red-400">
                               <p className="font-semibold">Feedback Richiesto:</p>
                               <p className="text-sm">{p.feedback_notes}</p>
@@ -755,28 +755,28 @@ const CreatorHubPage = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`px-3 py-1 rounded-full text-sm ${
-                            p.status === 'pending' ? 'bg-blue-100 text-blue-800' :
-                            p.status === 'accepted' ? 'bg-purple-100 text-purple-800' :
-                            p.status === 'waiting_video' ? 'bg-yellow-100 text-yellow-800' :
-                            p.status === 'in_review' ? 'bg-orange-100 text-orange-800' :
-                            p.status === 'revision_requested' ? 'bg-red-100 text-red-800' :
-                            p.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            p.status === 'Inviata' ? 'bg-blue-100 text-blue-800' :
+                            p.status === 'Accettata' ? 'bg-purple-100 text-purple-800' :
+                            p.status === 'In attesa di video' ? 'bg-yellow-100 text-yellow-800' :
+                            p.status === 'In revisione' ? 'bg-orange-100 text-orange-800' :
+                            p.status === 'Revisione richiesta' ? 'bg-red-100 text-red-800' :
+                            p.status === 'Completata' ? 'bg-green-100 text-green-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {p.status === 'pending' && 'Inviata'}
-                            {p.status === 'accepted' && 'Accettata (Contratto da firmare)'}
-                            {p.status === 'waiting_video' && 'In attesa di video'}
-                            {p.status === 'in_review' && 'Video in revisione'}
-                            {p.status === 'revision_requested' && 'Revisione richiesta'}
-                            {p.status === 'completed' && 'Completata'}
-                            {p.status === 'rejected' && 'Rifiutata'}
+                            {p.status === 'Inviata' && 'Inviata'}
+                            {p.status === 'Accettata' && 'Accettata (Contratto da firmare)'}
+                            {p.status === 'In attesa di video' && 'In attesa di video'}
+                            {p.status === 'In revisione' && 'Video in revisione'}
+                            {p.status === 'Revisione richiesta' && 'Revisione richiesta'}
+                            {p.status === 'Completata' && 'Completata'}
+                            {p.status === 'Rifiutata' && 'Rifiutata'}
                           </span>
-                          {p.status === 'accepted' && (
+                          {p.status === 'Accettata' && (
                             <Button size="sm" onClick={() => { setSelectedProposalForContract(p); setIsContractModalOpen(true); }} className="bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200">
                               <FileText className="h-4 w-4 mr-1" /> Firma Contratto
                             </Button>
                           )}
-                          {(p.status === 'waiting_video' || p.status === 'revision_requested') && (
+                          {(p.status === 'In attesa di video' || p.status === 'Revisione richiesta') && (
                             <Button size="sm" onClick={() => { setSelectedProposalForUpload(p); setVideoLink(p.video_url || ""); setSparkCode(p.spark_code || ""); setIsUploadVideoModalOpen(true); }} className="bg-yellow-600 text-white hover:bg-yellow-700 transition-all duration-200">
                               <Video className="h-4 w-4 mr-1" /> Carica Video
                             </Button>
